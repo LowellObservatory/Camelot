@@ -5,3 +5,5 @@
 2018*
 pngs
 .vscode
+*.conf
+*.nc
