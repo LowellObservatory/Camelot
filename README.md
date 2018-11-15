@@ -1,5 +1,5 @@
 # Camelot
-'Tis a silly place. Repository for one offs and toy models initially exploring a topic of random interest
+'Tis a silly place. Repository for one offs and toy models initially exploring random topics.
 
 ## CentroidMcCentroidface
 
