@@ -1,0 +1,7 @@
+*.fits
+*.fit
+*.FIT
+*.FITS
+2018*
+pngs
+.vscode
