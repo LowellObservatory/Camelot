@@ -15,4 +15,10 @@ in theory the better way to do things, even if it means a little extra work.
 And, by doing it ourselves, we can do value-added things like
 put markers on the various observing sites way more precisely
 or even start to fiddle with statistics over the observing sites
-as derived from one or many GOES-16 products.
+as derived from one or many GOES-16 products, or do simple
+manipulation (subtraction, RGB combos, etc.) ourselves to really 
+get the best thing we think we need.
+
+Grabbing data from AWS (or wherever) also puts us in a nice position
+to use other open/public datasets hosted by any of the various "big data"
+groups for Earth/environmental science, too.
