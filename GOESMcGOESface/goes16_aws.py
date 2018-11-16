@@ -15,7 +15,9 @@ Requires AWS credentials in the awsCreds.conf file.
 
 from __future__ import division, print_function, absolute_import
 
+import glob
 import configparser as conf
+from os import mkdir
 from os.path import basename
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -44,7 +46,25 @@ def parseConfFile(filename):
     return config
 
 
-def main(aws_keyid, aws_secretkey, now, timedelta=6):
+def checkOutDir(outdir):
+    """
+    """
+    # Check if the directory exists, and if not, create it!
+    try:
+        mkdir(outdir)
+    except FileExistsError:
+        pass
+    except Exception as err:
+        # Catch for other (permission?) errors just to be safe for now
+        print(str(err))
+
+    flist = sorted(glob.glob(outdir + "/*.nc"))
+    flist = [basename(each) for each in flist]
+
+    return flist
+
+
+def main(aws_keyid, aws_secretkey, now, outdir, timedelta=6):
     """
     AWS IAM user key
     AWS IAM user secret key
@@ -64,6 +84,9 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
     inst = "ABI-L2-CMIPC"
     channel = 13
 
+    # Check our output directory for files already downloaded
+    donelist = checkOutDir(outdir)
+
     # Sample key:
     # ABI-L2-CMIPC/2018/319/23/OR_ABI-L2-CMIPC-M3C13_G16_s20183192332157_e20183192334541_c20183192334582.nc
 
@@ -80,8 +103,7 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
 
         ckey = "%s/%04d/%03d/%02d/" % (inst, qyear, qday, qhour)
         querybins.append(ckey)
-
-    print(querybins)
+    # print(querybins)
 
     s3 = boto3.resource('s3', awszone,
                         aws_access_key_id=aws_keyid,
@@ -106,14 +128,26 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
                 # Current filename
                 ckey = basename(objs.key)
 
-                print("Found %s" % (ckey))
+                # print("Found %s" % (ckey))
 
                 # Specific filename to search for
                 fkey = "OR_%s-M3C%02d_G16" % (inst, channel)
 
                 if ckey.startswith(fkey):
-                    matches.append(objs)
-                    # buck.download_file(filekey, 'downloaded.nc')
+                    # Construct the output filename to save it as
+                    oname = ckey.split("_")[4][1:]
+                    oname = "%s/%s_C%02d.nc" % (outdir, oname, channel)
+
+                    # Just basename it so we can quickly check to see if
+                    #   we already downloaded this file; if so, skip it.
+                    boname = basename(oname)
+                    if boname not in donelist:
+                        matches.append(objs)
+                        buck.download_file(objs.key, oname)
+                        print("Downloaded: %s" % (oname))
+                    else:
+                        print(oname, "already downloaded!")
+
 
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "404":
@@ -125,6 +159,7 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
 
 
 if __name__ == "__main__":
+    outdir = "./GOESMcGOESface/data/"
     awsconf = "./GOESMcGOESface/awsCreds.conf"
     creds = parseConfFile(awsconf)
 
@@ -133,7 +168,7 @@ if __name__ == "__main__":
 
     when = dt.utcnow()
 
-    ffiles = main(aws_keyid, aws_secretkey, when)
+    ffiles = main(aws_keyid, aws_secretkey, when, outdir)
 
     print("Found the following files:")
     for f in ffiles:
