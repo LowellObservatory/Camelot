@@ -78,7 +78,7 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
         qday = qdt.tm_yday
         qhour = qdt.tm_hour
 
-        ckey = "%s/%04d/%02d/%02d/" % (inst, qyear, qday, qhour)
+        ckey = "%s/%04d/%03d/%02d/" % (inst, qyear, qday, qhour)
         querybins.append(ckey)
 
     print(querybins)
