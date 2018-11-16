@@ -48,16 +48,13 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
     """
     AWS IAM user key
     AWS IAM user secret key
-    Time query is relative to (usually datetime.datetime.now)
+    Time query is relative to (usually datetime.datetime.utcnow)
     Hours to query back from above
     """
     # AWS GOES bucket location/name
     #  https://registry.opendata.aws/noaa-goes/
     awsbucket = 'noaa-goes16'
     awszone = 'us-east-1'
-
-    print(aws_keyid)
-    print(aws_secretkey)
 
     # ABI: Advanced Baseline Imager
     # L2: "Level 2" (processed) data
@@ -66,7 +63,6 @@ def main(aws_keyid, aws_secretkey, now, timedelta=6):
     #   See also: https://www.ncdc.noaa.gov/data-access/satellite-data/goes-r-series-satellites
     inst = "ABI-L2-CMIPC"
     channel = 13
-    fmask = "OR_%s-M3C%02d_G16" % (inst, channel)
 
     # Sample key:
     # ABI-L2-CMIPC/2018/319/23/OR_ABI-L2-CMIPC-M3C13_G16_s20183192332157_e20183192334541_c20183192334582.nc
