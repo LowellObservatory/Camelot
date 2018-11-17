@@ -45,25 +45,15 @@ def G16_ABI_L2_ProjDef(nc):
 
     # Since scanning_angle (radians) = projection_coordinate / h,
     #   the projection coordinates are now easy to get.
-    # satH = proj_var.perspective_point_height
-    # satLon = proj_var.longitude_of_projection_origin
-    # semi_major = proj_var.semi_major_axis
-    # semi_minor = proj_var.semi_minor_axis
-
-    # As I fiddled with this more, I noticed that I get a better result
-    #   for registration of coastlines/boundaries if I use these specific ones
-    # nom. sat height is in km
-    satH = nc.variables['nominal_satellite_height'][0]*1000
-    satLon = nc.variables['nominal_satellite_subpoint_lon'][0]
-    satLat = nc.variables['nominal_satellite_subpoint_lat'][0]
+    satH = proj_var.perspective_point_height
+    satLat = proj_var.latitude_of_projection_origin
+    satLon = proj_var.longitude_of_projection_origin
+    satSweep = proj_var.sweep_angle_axis
     semi_major = proj_var.semi_major_axis
     semi_minor = proj_var.semi_minor_axis
 
-    print("xoff: ", nc.variables['x'].add_offset/satH)
-    print("yoff:", nc.variables['y'].add_offset/satH)
-
-    x = (nc.variables['x'][:] + 0.00007)*satH
-    y = (nc.variables['y'][:] - 0.0003)*satH
+    x = (nc.variables['x'][:])*satH
+    y = (nc.variables['y'][:])*satH
 
     nx = len(x)
     ny = len(y)
@@ -74,11 +64,14 @@ def G16_ABI_L2_ProjDef(nc):
     max_y = y.max()
 
     # NOTE:
-    #   Currently don't know why they're offsetting by half_x/y...
+    #   Currently don't know why the google example offsets by half_x/y...
     half_x = (max_x - min_x) / nx / 2.
     half_y = (max_y - min_y) / ny / 2.
     extents = (min_x - half_x, min_y - half_y, max_x + half_x, max_y + half_y)
 
+    # Props to
+    #  https://groups.google.com/forum/#!topic/pytroll/EIl0voQDqiI
+    #  for pointing out that 'sweep' definition is important!!!
     old_grid = pr.geometry.AreaDefinition('geos', 'goes_conus', 'geos',
                                           {'proj': 'geos',
                                            'h': str(satH),
@@ -86,7 +79,9 @@ def G16_ABI_L2_ProjDef(nc):
                                            'lat_0': str(satLat),
                                            'a': str(semi_major),
                                            'b': str(semi_minor),
-                                           'units': 'm'},
+                                           'units': 'm',
+                                           'ellps': 'GRS80',
+                                           'sweep': satSweep},
                                           nx, ny, extents)
 
     return old_grid
