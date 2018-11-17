@@ -20,6 +20,8 @@ import numpy as np
 import pyresample as pr
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
+
+import cartopy.crs as ccrs
 import cartopy.feature as cfeat
 
 
@@ -91,7 +93,7 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5):
     # Parse/grab the existing projection information
     old_grid = G16_ABI_L2_ProjDef(nc)
 
-    pr.plot.show_quicklook(old_grid, data, coast_res='10m')
+    # pr.plot.show_quicklook(old_grid, data, coast_res='10m')
 
     # Output grid centered on clat, clon. Symmetric in each extent
     #   though not necessarily symmetric in Lat/Lon
@@ -129,6 +131,9 @@ if __name__ == "__main__":
     forceRegen = True
     inloc = './GOESMcGOESface/data/'
 
+    # Additional shapefiles (if desired)
+
+
     flist = sorted(glob.glob(inloc + "*.nc"))
 
     for each in flist:
@@ -162,14 +167,39 @@ if __name__ == "__main__":
             ax = plt.axes(projection=crs)
             ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
             ax.add_feature(cfeat.BORDERS.with_scale('10m'))
-            ax.add_feature(cfeat.RIVERS.with_scale('10m'))
+            ax.add_feature(cfeat.RIVERS.with_scale('10m'),
+                           alpha=0.75, edgecolor='aqua')
             ax.add_feature(cfeat.STATES.with_scale('10m'),
-                           linestyle=":", edgecolor='r')
+                           linestyle=":", edgecolor='black')
 
-            ax.set_global()
+            # Lowell
+            ax.plot(-111.664444, 35.202778, marker='*', color='red',
+                    markersize=8, alpha=0.95, transform=ccrs.Geodetic())
+
+            # DCT (also the center/focal point of the map projection)
+            ax.plot(cLon, cLat, marker='o', color='red', markersize=6,
+                    alpha=0.95, transform=ccrs.Geodetic())
+
+            # Anderson Mesa
+            ax.plot(-111.535833, 35.096944, marker='o', color='red',
+                    markersize=6, alpha=0.95, transform=ccrs.Geodetic())
+
+            # KPNO
+            ax.plot(-111.5967, 31.9583, marker='o', color='purple',
+                    markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+
+            # LBT
+            ax.plot(-109.889064, 32.701308, marker='o', color='purple',
+                    markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+
+            # MMT
+            ax.plot(-110.885, 31.6883, marker='o', color='purple',
+                    markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+
+            # ax.set_global()
+
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper')
-            plt.colorbar()
+            plt.tight_layout()
+            # plt.colorbar()
             plt.savefig(outpname)
             plt.close()
-
-        break
