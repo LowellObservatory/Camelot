@@ -148,7 +148,6 @@ def main(aws_keyid, aws_secretkey, now, outdir, timedelta=6):
                     else:
                         print(oname, "already downloaded!")
 
-
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "404":
                 print("The object does not exist.")
@@ -168,7 +167,7 @@ if __name__ == "__main__":
 
     when = dt.utcnow()
 
-    ffiles = main(aws_keyid, aws_secretkey, when, outdir)
+    ffiles = main(aws_keyid, aws_secretkey, when, outdir, timedelta=6)
 
     print("Found the following files:")
     for f in ffiles:
