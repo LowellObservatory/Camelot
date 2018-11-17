@@ -15,6 +15,7 @@ from __future__ import division, print_function, absolute_import
 
 import glob
 
+import os
 import numpy as np
 import pyresample as pr
 from netCDF4 import Dataset
@@ -58,8 +59,11 @@ def G16_ABI_L2_ProjDef(nc):
     semi_major = proj_var.semi_major_axis
     semi_minor = proj_var.semi_minor_axis
 
-    x = nc.variables['x'][:] * satH
-    y = nc.variables['y'][:] * satH
+    print("xoff: ", nc.variables['x'].add_offset/satH)
+    print("yoff:", nc.variables['y'].add_offset/satH)
+
+    x = (nc.variables['x'][:] + 0.00007)*satH
+    y = (nc.variables['y'][:] - 0.0003)*satH
 
     nx = len(x)
     ny = len(y)
@@ -74,8 +78,6 @@ def G16_ABI_L2_ProjDef(nc):
     half_x = (max_x - min_x) / nx / 2.
     half_y = (max_y - min_y) / ny / 2.
     extents = (min_x - half_x, min_y - half_y, max_x + half_x, max_y + half_y)
-
-    # extents = (min_x, min_y, max_x, max_y)
 
     old_grid = pr.geometry.AreaDefinition('geos', 'goes_conus', 'geos',
                                           {'proj': 'geos',
@@ -124,44 +126,55 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5):
     return old_grid, area_def, pData
 
 
-def plotData(dat, cLat, cLon):
-    """
-    """
-    gamma = 2.2
-
-    # Grab just the image data & quickly gamma correct
-    img = dat['CMI'][:]
-    img = np.power(img, 1./gamma)
-
-    ogrid, ngrid, ndat = crop_image(dat, img, cLat, cLon)
-
-    # Get the new projection/transformation info for the plot axes
-    crs = ngrid.to_cartopy_crs()
-
-    ax = plt.axes(projection=crs)
-    ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
-    ax.add_feature(cfeat.BORDERS.with_scale('10m'))
-    ax.add_feature(cfeat.RIVERS.with_scale('10m'))
-    ax.add_feature(cfeat.STATES.with_scale('10m'),
-                   linestyle=":", edgecolor='r')
-
-    ax.set_global()
-    plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper')
-    plt.colorbar()
-    plt.show(block=True)
-
-
 if __name__ == "__main__":
-    dctLat = 34.7443
-    dctLon = -111.4223
+    cLat = 34.7443
+    cLon = -111.4223
     dctAlt = 2361
-
+    gamma = 2.2
+    forceRegen = True
     inloc = './GOESMcGOESface/data/'
 
     flist = sorted(glob.glob(inloc + "*.nc"))
 
     for each in flist:
-        dat = readNC(each)
-        plotData(dat, dctLat, dctLon)
+        outpname = "./GOESMcGOESface/pngs/%s.png" % (os.path.basename(each))
+
+        # Logic to skip stuff already completed, or just redo everything
+        if forceRegen is True:
+            save = True
+        else:
+            # Check to see if we're already done with this image
+            #   (actual check is pending, this'll do for now)
+            found = False
+
+            if found is True:
+                save = False
+            else:
+                save = True
+
+        if save is True:
+            dat = readNC(each)
+            # Grab just the image data & quickly gamma correct
+            img = dat['CMI'][:]
+            img = np.power(img, 1./gamma)
+
+            ogrid, ngrid, ndat = crop_image(dat, img, cLat, cLon)
+
+            # Get the new projection/transformation info for the plot axes
+            crs = ngrid.to_cartopy_crs()
+
+            fig = plt.figure(figsize=(8, 10))
+            ax = plt.axes(projection=crs)
+            ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
+            ax.add_feature(cfeat.BORDERS.with_scale('10m'))
+            ax.add_feature(cfeat.RIVERS.with_scale('10m'))
+            ax.add_feature(cfeat.STATES.with_scale('10m'),
+                           linestyle=":", edgecolor='r')
+
+            ax.set_global()
+            plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper')
+            plt.colorbar()
+            plt.savefig(outpname)
+            plt.close()
 
         break
