@@ -22,3 +22,7 @@ get the best thing we think we need.
 Grabbing data from AWS (or wherever) also puts us in a nice position
 to use other open/public datasets hosted by any of the various "big data"
 groups for Earth/environmental science, too.
+
+### Additional Shapefiles
+
+Obtained from [https://www.census.gov/geo/maps-data/data/tiger-line.html](https://www.census.gov/geo/maps-data/data/tiger-line.html) in Nov. 2018.
