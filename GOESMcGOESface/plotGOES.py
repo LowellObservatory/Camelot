@@ -131,7 +131,7 @@ if __name__ == "__main__":
     cLon = -111.4223
     dctAlt = 2361
     gamma = 2.2
-    forceRegen = True
+    forceRegen = False
     inloc = './GOESMcGOESface/data/'
 
     # Additional shapefiles (if desired)
@@ -147,11 +147,11 @@ if __name__ == "__main__":
             save = True
         else:
             # Check to see if we're already done with this image
-            #   (actual check is pending, this'll do for now)
-            found = False
+            found = os.path.isfile(outpname)
 
             if found is True:
                 save = False
+                print("File %s exists! Skipping." % (outpname))
             else:
                 save = True
 
