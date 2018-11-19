@@ -26,3 +26,7 @@ groups for Earth/environmental science, too.
 ### Additional Shapefiles
 
 Obtained from [https://www.census.gov/geo/maps-data/data/tiger-line.html](https://www.census.gov/geo/maps-data/data/tiger-line.html) in Nov. 2018.
+
+### Additional datasets
+
+[AWS NOAA NEXRAD](https://registry.opendata.aws/noaa-nexrad/)
