@@ -126,6 +126,52 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5):
     return old_grid, area_def, pData
 
 
+def add_map_features(ax):
+    ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
+    ax.add_feature(cfeat.BORDERS.with_scale('10m'))
+
+    # Slightly transparent rivers
+    ax.add_feature(cfeat.RIVERS.with_scale('10m'),
+                   alpha=0.75, edgecolor='aqua')
+
+    # Dotted lines for state borders
+    ax.add_feature(cfeat.STATES.with_scale('10m'),
+                   linestyle=":", edgecolor='black')
+
+    return ax
+
+
+def add_AZObs(ax):
+    """
+    Hardcoded this for now, with a Lowell/Mars Hill getting a "*" marker
+    """
+    # Lowell
+    ax.plot(-111.664444, 35.202778, marker='*', color='red',
+            markersize=8, alpha=0.95, transform=ccrs.Geodetic())
+
+    # DCT
+    ax.plot(-111.4223, 34.7443, marker='o', color='red', markersize=6,
+            alpha=0.95, transform=ccrs.Geodetic())
+
+    # Anderson Mesa
+    ax.plot(-111.535833, 35.096944, marker='o', color='red',
+            markersize=6, alpha=0.95, transform=ccrs.Geodetic())
+
+    # KPNO
+    ax.plot(-111.5967, 31.9583, marker='o', color='purple',
+            markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+
+    # LBT
+    ax.plot(-109.889064, 32.701308, marker='o', color='purple',
+            markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+
+    # MMT
+    ax.plot(-110.885, 31.6883, marker='o', color='purple',
+            markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+
+    return ax
+
+
 if __name__ == "__main__":
     cLat = 34.7443
     cLon = -111.4223
@@ -178,42 +224,17 @@ if __name__ == "__main__":
 
             fig = plt.figure(figsize=(8, 10))
             ax = plt.axes(projection=crs)
-            ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
-            ax.add_feature(cfeat.BORDERS.with_scale('10m'))
-            ax.add_feature(cfeat.RIVERS.with_scale('10m'),
-                           alpha=0.75, edgecolor='aqua')
-            ax.add_feature(cfeat.STATES.with_scale('10m'),
-                           linestyle=":", edgecolor='black')
 
-            # Lowell
-            ax.plot(-111.664444, 35.202778, marker='*', color='red',
-                    markersize=8, alpha=0.95, transform=ccrs.Geodetic())
-
-            # DCT (also the center/focal point of the map projection)
-            ax.plot(cLon, cLat, marker='o', color='red', markersize=6,
-                    alpha=0.95, transform=ccrs.Geodetic())
-
-            # Anderson Mesa
-            ax.plot(-111.535833, 35.096944, marker='o', color='red',
-                    markersize=6, alpha=0.95, transform=ccrs.Geodetic())
-
-            # KPNO
-            ax.plot(-111.5967, 31.9583, marker='o', color='purple',
-                    markersize=5, alpha=0.95, transform=ccrs.Geodetic())
-
-            # LBT
-            ax.plot(-109.889064, 32.701308, marker='o', color='purple',
-                    markersize=5, alpha=0.95, transform=ccrs.Geodetic())
-
-            # MMT
-            ax.plot(-110.885, 31.6883, marker='o', color='purple',
-                    markersize=5, alpha=0.95, transform=ccrs.Geodetic())
+            # Some custom stuff
+            ax = add_map_features(ax)
+            ax = add_AZObs(ax)
 
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
                        vmin=11., vmax=14., interpolation='none')
             # plt.colorbar()
 
-            # Add the informational bar at the top
+            # Add the informational bar at the top, using info directly
+            #   from the original datafiles that we opened at the top
             line1 = "%s  %s" % (plat, dprod)
             line1 = line1.upper()
 
