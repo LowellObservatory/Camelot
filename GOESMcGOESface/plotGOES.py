@@ -16,10 +16,13 @@ from __future__ import division, print_function, absolute_import
 import glob
 
 import os
+from datetime import datetime as dt
+
 import numpy as np
 import pyresample as pr
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
@@ -154,6 +157,16 @@ if __name__ == "__main__":
 
         if save is True:
             dat = readNC(each)
+
+            # Pull out the channel/band and other identifiers
+            chan = dat.variables['band_id'][0]
+            plat = "%s (%s)" % (dat.orbital_slot, dat.platform_ID)
+            dprod = dat.title
+
+            # Pull out the time stamp
+            tend = dt.strptime(dat.time_coverage_end,
+                               "%Y-%m-%dT%H:%M:%S.%fZ")
+
             # Grab just the image data & quickly gamma correct
             img = dat['CMI'][:]
             img = np.power(img, 1./gamma)
@@ -196,10 +209,39 @@ if __name__ == "__main__":
             ax.plot(-110.885, 31.6883, marker='o', color='purple',
                     markersize=5, alpha=0.95, transform=ccrs.Geodetic())
 
-            # ax.set_global()
-
-            plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper')
-            plt.tight_layout()
+            plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
+                       vmin=11., vmax=14., interpolation='none')
             # plt.colorbar()
-            plt.savefig(outpname)
+
+            # Add the informational bar at the top
+            line1 = "%s  %s" % (plat, dprod)
+            line1 = line1.upper()
+
+            # We don't need microseconds shown on this plot
+            tendstr = tend.strftime("%Y-%m-%d  %H:%M:%SZ")
+            line2 = "Band %02d  %s" % (chan, tendstr)
+            line2 = line2.upper()
+
+            # Black background for top label text
+            #   NOTE: Z order is important! Text should be higher than trect
+            trect = mpatches.Rectangle((0.0, 0.955), width=1.0, height=0.045,
+                                       edgecolor=None, facecolor='black',
+                                       fill=True, alpha=0.75, zorder=100,
+                                       transform=ax.transAxes)
+            ax.add_patch(trect)
+
+            # Line 1
+            plt.annotate(line1, (0.5, 0.985), xycoords='axes fraction',
+                         fontfamily='monospace',
+                         horizontalalignment='center',
+                         verticalalignment='center',
+                         color='white', fontweight='bold', zorder=200)
+            # Line 2
+            plt.annotate(line2, (0.5, 0.965), xycoords='axes fraction',
+                         fontfamily='monospace',
+                         horizontalalignment='center',
+                         verticalalignment='center',
+                         color='white', fontweight='bold', zorder=200)
+
+            plt.savefig(outpname, pad_inches=0, bbox_inches='tight')
             plt.close()
