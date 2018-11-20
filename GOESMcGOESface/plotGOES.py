@@ -21,11 +21,16 @@ from datetime import datetime as dt
 import numpy as np
 import pyresample as pr
 from netCDF4 import Dataset
+
+import matplotlib
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
+import cartopy.io.shapereader as shapereader
 
 
 def readNC(filename):
@@ -75,8 +80,9 @@ def G16_ABI_L2_ProjDef(nc):
     extents = (min_x - half_x, min_y - half_y, max_x + half_x, max_y + half_y)
 
     # Props to
-    #  https://groups.google.com/forum/#!topic/pytroll/EIl0voQDqiI
-    #  for pointing out that 'sweep' definition is important!!!
+    #   https://groups.google.com/forum/#!topic/pytroll/EIl0voQDqiI
+    # for pointing out that 'sweep' definition is important!!!
+    # You get an X & Y offset without it, which makes sense in retrospect.
     old_grid = pr.geometry.AreaDefinition('geos', 'goes_conus', 'geos',
                                           {'proj': 'geos',
                                            'h': str(satH),
@@ -126,7 +132,7 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5):
     return old_grid, area_def, pData
 
 
-def add_map_features(ax):
+def add_map_features(ax, roads=None):
     ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
     ax.add_feature(cfeat.BORDERS.with_scale('10m'))
 
@@ -138,12 +144,88 @@ def add_map_features(ax):
     ax.add_feature(cfeat.STATES.with_scale('10m'),
                    linestyle=":", edgecolor='black')
 
+    if roads is not None:
+        # Reminder that roads is a dict with keys:
+        #  interstates, fedroads, stateroads, otherroads
+        for rtype in roads:
+            good = True
+            if rtype == "Interstate":
+                rcolor = 'gold'
+                ralpha = 0.55
+            elif rtype == "Federal":
+                rcolor = 'gold'
+                ralpha = 0.55
+            elif rtype == 'State':
+                rcolor = 'LightSkyBlue'
+                ralpha = 0.55
+            elif rtype == "Other":
+                rcolor = 'LightSkyBlue'
+                ralpha = 0.45
+            else:
+                good = False
+
+            # Only plot the ones specifed above; if it doesn't fit one of
+            #   those categories then skip it completely because something
+            #   is wrong or changed.
+            if good is True:
+                sfeat = cfeat.ShapelyFeature(roads[rtype], ccrs.PlateCarree())
+                ax.add_feature(sfeat, facecolor='none',
+                               edgecolor=rcolor, alpha=ralpha)
+
     return ax
+
+
+def parseRoads(rclasses):
+    """
+    See https://www.naturalearthdata.com/downloads/10m-cultural-vectors/roads/
+    for field information; below is just a quick summary.
+
+    CLASS:
+        Interstate (Interstates and Quebec Autoroutes)
+        Federal (US Highways, Mexican Federal Highways, Trans-Canada Highways)
+        State (US State, Mexican State, and Canadian Provincial Highways)
+        Other (any other road class)
+        Closed (road is closed to public)
+        U/C (road is under construction)
+    TYPE:
+        Tollway
+        Freeway
+        Primary
+        Secondary
+        Other Paved
+        Unpaved
+        Winter (ice road, open winter only)
+        Trail
+        Ferry
+    """
+    rds = shapereader.natural_earth(resolution='10m',
+                                    category='cultural',
+                                    name='roads_north_america')
+
+    rdsrec = shapereader.Reader(rds)
+
+    rdict = {}
+    # A dict is far easier to interact with so make one
+    for rec in rdsrec.records():
+        for key in rclasses:
+            if rec.attributes['class'] == key:
+                try:
+                    rdict[key].append(rec.geometry)
+                except KeyError:
+                    # This means the key hasn't been created yet so make it
+                    #   and then fill it with the value.
+                    #   It should then work fine the next time
+                    rdict.update({key: [rec.geometry]})
+
+    return rdict
 
 
 def add_AZObs(ax):
     """
-    Hardcoded this for now, with a Lowell/Mars Hill getting a "*" marker
+    Hardcoded this for now, with a Lowell/Mars Hill getting a "*" marker.
+
+    Would be easy to pass in a dict of locations and marker/color info too
+    and just loop through that, but since I only have 5 now it's no big deal.
     """
     # Lowell
     ax.plot(-111.664444, 35.202778, marker='*', color='red',
@@ -177,13 +259,19 @@ if __name__ == "__main__":
     cLon = -111.4223
     dctAlt = 2361
     gamma = 2.2
-    forceRegen = False
+    forceRegen = True
     inloc = './GOESMcGOESface/data/'
-
-    # Additional shapefiles (if desired)
-
+    rclasses = ["Interstate", "Federal", "State", "Other"]
 
     flist = sorted(glob.glob(inloc + "*.nc"))
+
+    # On the assumption that we'll plot something, downselect the full
+    #   road database into the subset we want
+    print("Parsing road data...")
+    print("\tClasses: %s" % (rclasses))
+
+    # roads will be a dict with keys of rclasses and values of geometries
+    roads = parseRoads(rclasses)
 
     for each in flist:
         outpname = "./GOESMcGOESface/pngs/%s.png" % (os.path.basename(each))
@@ -226,7 +314,7 @@ if __name__ == "__main__":
             ax = plt.axes(projection=crs)
 
             # Some custom stuff
-            ax = add_map_features(ax)
+            ax = add_map_features(ax, roads=roads)
             ax = add_AZObs(ax)
 
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
