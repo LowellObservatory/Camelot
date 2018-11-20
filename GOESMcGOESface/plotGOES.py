@@ -125,9 +125,12 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
 
     # If we don't have projection coefficients already, calculate 'em!
     if pCoeff is None:
+        # SC2000 FTW
+        print("Reticulating splines...")
+
+        # NOTE: On 20181120, when nprocs > 1 it never returned. Bug? Dunno.
         # pCoeff: valid_input_index, valid_output_index,
         #         index_array, distance_array
-        print("Reticulating splines...")
         pCoeff = pr.kd_tree.get_neighbour_info(old_grid, area_def, 5000.,
                                                neighbours=1, epsilon=1000.,
                                                nprocs=1)
@@ -146,11 +149,10 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
                                                       pCoeff[1],
                                                       pCoeff[2])
 
-    # OLD WAY THAT WORKS!!!
+    # OLD WAY THAT STILL WORKS! Resamples in one step, and its basically just
+    #   a wrapper for the above two-step dance.
     # pData = pr.kd_tree.resample_nearest(old_grid, data, area_def,
     #                                     radius_of_influence=5000)
-
-    # return old_grid, area_def, pData
 
     return old_grid, area_def, pData, pCoeff
 
