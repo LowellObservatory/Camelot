@@ -399,10 +399,9 @@ if __name__ == "__main__":
             ax = add_AZObs(ax)
 
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
-                       vmin=vmin, vmax=vmax,
-                       interpolation='none',
+                       vmin=vmin, vmax=vmax, interpolation='none',
                        cmap=gcmap)
-            plt.colorbar()
+            # plt.colorbar()
 
             # Add the informational bar at the top, using info directly
             #   from the original datafiles that we opened at the top
