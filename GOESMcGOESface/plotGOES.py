@@ -132,7 +132,7 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
         # pCoeff: valid_input_index, valid_output_index,
         #         index_array, distance_array
         pCoeff = pr.kd_tree.get_neighbour_info(old_grid, area_def, 5000.,
-                                               neighbours=1, epsilon=1000.,
+                                               neighbours=1, epsilon=0.,
                                                nprocs=1)
         print('Transformation calculated from {}'.format(old_grid))
     else:
