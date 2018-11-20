@@ -284,7 +284,7 @@ if __name__ == "__main__":
     cLon = -111.4223
     dctAlt = 2361
     gamma = 2.2
-    forceRegen = True
+    forceRegen = False
     inloc = './GOESMcGOESface/data/'
     rclasses = ["Interstate", "Federal", "State", "Other"]
 
@@ -298,6 +298,9 @@ if __name__ == "__main__":
     # roads will be a dict with keys of rclasses and values of geometries
     roads = parseRoads(rclasses)
 
+    # k is the outer loop counter
+    # i is the number-of-images processed counter
+    i = 0
     for k, each in enumerate(flist):
         outpname = "./GOESMcGOESface/pngs/%s.png" % (os.path.basename(each))
 
@@ -328,7 +331,7 @@ if __name__ == "__main__":
 
             # If it's our first time through, we definitely need to recalculate
             #   the projection/transformation stuff
-            if k == 0:
+            if i == 0:
                 pCoeff = None
             else:
                 # Check to see if we've rolled over in day, and if so,
@@ -396,3 +399,4 @@ if __name__ == "__main__":
             # Make sure to save the current timestamp for comparison the
             #   next time through the loop!
             tprev = tend
+            i += 1
