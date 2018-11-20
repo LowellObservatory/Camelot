@@ -133,6 +133,9 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
                                                nprocs=1)
         print('Transformation calculated from {}'.format(old_grid))
     else:
+        # NOTE: I'm not rechecking anything, I'm just assuming it's all good
+        #   and reusing it.  It'll probably look messed up in some obvious
+        #   way if that ever becomes a problem.
         print("Reusing transformation coefficients!")
 
     # Now that we're guaranteed to have the projection details, actually do it
