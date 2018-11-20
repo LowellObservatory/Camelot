@@ -22,11 +22,10 @@ import numpy as np
 import pyresample as pr
 from netCDF4 import Dataset
 
-import matplotlib
-matplotlib.use("Agg")
-
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
@@ -117,6 +116,7 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
 
     swath_def = pr.geometry.SwathDefinition(lons=lons, lats=lats)
 
+    # LCC is Lambert conformal conic projection
     area_def = swath_def.compute_optimal_bb_area({'proj': 'lcc',
                                                   'lon_0': clon,
                                                   'lat_0': clat,
@@ -279,14 +279,51 @@ def add_AZObs(ax):
     return ax
 
 
+def getCmap(vmin=160, vmax=330, trans=None):
+    rnge = vmax - vmin
+    # NOTE: All values are in Kelvin
+    #   trans must be between vmin and vmax!
+    if trans is None:
+        c01t = 195
+        c12t = 255
+        c23t = 300
+
+        c0p = int(np.floor(100*((c01t - vmin)/rnge)))
+        c1p = int(np.floor(100*(c12t - c01t)/rnge))
+        c2p = int(np.floor(100*(c23t - c12t)/rnge))
+        c3p = 100 - (c0p + c1p + c2p)
+
+    # Keeping things to a total of 256 for rounding purposes;
+    #    If vmin == 330 and vmax == 160
+
+    # Second option is number of entries in the map (lut)
+    c0 = cm.get_cmap("twilight_shifted", 128)
+    # c1 = cm.get_cmap("gist_earth", 80)
+    c1 = cm.get_cmap("rainbow_r", 128)
+    c2 = cm.get_cmap("bone_r", 128)
+    c3 = cm.get_cmap("bone", 128)
+
+    newcolors = np.vstack((c0(np.linspace(0, 1, c0p)),
+                           c1(np.linspace(0, 1, c1p)),
+                           c2(np.linspace(0, 1, c2p)),
+                           c3(np.linspace(0, 1, c3p))))
+
+    newcmp = ListedColormap(newcolors, name='G16_Custom')
+
+    return newcmp
+
+
 if __name__ == "__main__":
+    # Warning, you may explode
+    #  https://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.switch_backend
+    plt.switch_backend("Agg")
+
     cLat = 34.7443
     cLon = -111.4223
     dctAlt = 2361
-    gamma = 2.2
     forceRegen = False
     inloc = './GOESMcGOESface/data/'
-    rclasses = ["Interstate", "Federal", "State", "Other"]
+    rclasses = ["Interstate", "Federal"]#, "State", "Other"]
 
     flist = sorted(glob.glob(inloc + "*.nc"))
 
@@ -297,6 +334,10 @@ if __name__ == "__main__":
 
     # roads will be a dict with keys of rclasses and values of geometries
     roads = parseRoads(rclasses)
+
+    # Construct/grab the color map
+    vmin, vmax = 160, 330
+    gcmap = getCmap(vmin=vmin, vmax=vmax)
 
     # k is the outer loop counter
     # i is the number-of-images processed counter
@@ -341,7 +382,6 @@ if __name__ == "__main__":
 
             # Grab just the image data & quickly gamma correct
             img = dat['CMI'][:]
-            img = np.power(img, 1./gamma)
 
             # This is the function that actually handles the reprojection
             ogrid, ngrid, ndat, pCoeff = crop_image(dat, img, cLat, cLon,
@@ -359,8 +399,10 @@ if __name__ == "__main__":
             ax = add_AZObs(ax)
 
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
-                       vmin=11., vmax=14., interpolation='none')
-            # plt.colorbar()
+                       vmin=vmin, vmax=vmax,
+                       interpolation='none',
+                       cmap=gcmap)
+            plt.colorbar()
 
             # Add the informational bar at the top, using info directly
             #   from the original datafiles that we opened at the top
