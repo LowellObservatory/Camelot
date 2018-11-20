@@ -25,7 +25,11 @@ groups for Earth/environmental science, too.
 
 ### Additional Shapefiles
 
-Obtained from [https://www.census.gov/geo/maps-data/data/tiger-line.html](https://www.census.gov/geo/maps-data/data/tiger-line.html) in Nov. 2018.
+I'm using https://www.naturalearthdata.com/downloads/10m-cultural-vectors/roads/ for 
+road information, explicitly parsed to only get a subset. 
+
+See the ```parseRoads``` function for more details but it's pretty simple using the attributes
+in the above mentioned shapefile.
 
 ### Additional datasets
 
