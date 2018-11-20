@@ -51,7 +51,7 @@ def G16_ABI_L2_ProjDef(nc):
     # See also:
     #     https://proj4.org/operations/projections/geos.html
     proj_var = nc.variables['goes_imager_projection']
-    print(proj_var)
+    # print(proj_var)
 
     # Since scanning_angle (radians) = projection_coordinate / h,
     #   the projection coordinates are now easy to get.
@@ -98,7 +98,7 @@ def G16_ABI_L2_ProjDef(nc):
     return old_grid
 
 
-def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5):
+def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
     # Parse/grab the existing projection information
     old_grid = G16_ABI_L2_ProjDef(nc)
 
@@ -123,13 +123,33 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5):
                                                   'lat_1': clat,
                                                   'lat_2': clat})
 
-    # now do remapping
-    print('Remapping from {}'.format(old_grid))
+    # If we don't have projection coefficients already, calculate 'em!
+    if pCoeff is None:
+        # pCoeff: valid_input_index, valid_output_index,
+        #         index_array, distance_array
+        print("Reticulating splines...")
+        pCoeff = pr.kd_tree.get_neighbour_info(old_grid, area_def, 5000.,
+                                               neighbours=1, epsilon=1000.,
+                                               nprocs=1)
+        print('Transformation calculated from {}'.format(old_grid))
+    else:
+        print("Reusing transformation coefficients!")
 
-    pData = pr.kd_tree.resample_nearest(old_grid, data, area_def,
-                                        radius_of_influence=5000)
+    # Now that we're guaranteed to have the projection details, actually do it
+    pData = pr.kd_tree.get_sample_from_neighbour_info('nn',
+                                                      area_def.shape,
+                                                      data,
+                                                      pCoeff[0],
+                                                      pCoeff[1],
+                                                      pCoeff[2])
 
-    return old_grid, area_def, pData
+    # OLD WAY THAT WORKS!!!
+    # pData = pr.kd_tree.resample_nearest(old_grid, data, area_def,
+    #                                     radius_of_influence=5000)
+
+    # return old_grid, area_def, pData
+
+    return old_grid, area_def, pData, pCoeff
 
 
 def add_map_features(ax, roads=None):
@@ -273,7 +293,7 @@ if __name__ == "__main__":
     # roads will be a dict with keys of rclasses and values of geometries
     roads = parseRoads(rclasses)
 
-    for each in flist:
+    for k, each in enumerate(flist):
         outpname = "./GOESMcGOESface/pngs/%s.png" % (os.path.basename(each))
 
         # Logic to skip stuff already completed, or just redo everything
@@ -301,15 +321,28 @@ if __name__ == "__main__":
             tend = dt.strptime(dat.time_coverage_end,
                                "%Y-%m-%dT%H:%M:%S.%fZ")
 
+            # If it's our first time through, we definitely need to recalculate
+            #   the projection/transformation stuff
+            if k == 0:
+                pCoeff = None
+            else:
+                # Check to see if we've rolled over in day, and if so,
+                #   force recalculation of the transformation/projection stuff
+                if tend.day != tprev.day:
+                    pCoeff = None
+
             # Grab just the image data & quickly gamma correct
             img = dat['CMI'][:]
             img = np.power(img, 1./gamma)
 
-            ogrid, ngrid, ndat = crop_image(dat, img, cLat, cLon)
+            # This is the function that actually handles the reprojection
+            ogrid, ngrid, ndat, pCoeff = crop_image(dat, img, cLat, cLon,
+                                                    pCoeff=pCoeff)
 
             # Get the new projection/transformation info for the plot axes
             crs = ngrid.to_cartopy_crs()
 
+            # Figure creation
             fig = plt.figure(figsize=(8, 10))
             ax = plt.axes(projection=crs)
 
@@ -354,3 +387,7 @@ if __name__ == "__main__":
 
             plt.savefig(outpname, pad_inches=0, bbox_inches='tight')
             plt.close()
+
+            # Make sure to save the current timestamp for comparison the
+            #   next time through the loop!
+            tprev = tend
