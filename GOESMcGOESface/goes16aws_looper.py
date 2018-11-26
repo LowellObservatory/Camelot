@@ -84,6 +84,7 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
         ldir = "%s/%s" % (outdir, latestname)
         try:
             copyfile(latest, ldir)
+            print("Latest file copy done!")
         except Exception as err:
             # TODO: Figure out the proper/specific exception to catch
             print(str(err))
