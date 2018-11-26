@@ -68,7 +68,7 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
             print(basename(f.key))
 
         print("Making the plots...")
-        pgoes.makePlots(pout, forceRegen=forceRegen)
+        pgoes.makePlots(dout, pout, forceRegen=forceRegen)
         print("Plots done! Sleeping...")
 
         time.sleep(sleep)

@@ -313,7 +313,7 @@ def getCmap(vmin=160, vmax=330, trans=None):
     return newcmp
 
 
-def makePlots(inloc, forceRegen=False):
+def makePlots(inloc, outloc, forceRegen=False):
     # Warning, you may explode
     #  https://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.switch_backend
     plt.switch_backend("Agg")
@@ -345,7 +345,7 @@ def makePlots(inloc, forceRegen=False):
     # i is the number-of-images processed counter
     i = 0
     for each in flist:
-        outpname = "./GOESMcGOESface/pngs/%s.png" % (os.path.basename(each))
+        outpname = "%s/%s.png" % (outloc, os.path.basename(each))
 
         # Logic to skip stuff already completed, or just redo everything
         if forceRegen is True:
