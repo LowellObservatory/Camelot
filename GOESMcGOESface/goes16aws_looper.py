@@ -14,7 +14,9 @@
 from __future__ import division, print_function, absolute_import
 
 import time
+import glob
 import configparser as conf
+from shutil import copyfile
 from os.path import basename
 from datetime import datetime as dt
 
@@ -71,7 +73,21 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
 
         print("Making the plots...")
         pgoes.makePlots(dout, pout, forceRegen=forceRegen)
-        print("Plots done! Sleeping...")
+        print("Plots done!")
+
+        print("Moving the latest to the usual location...")
+
+        # Since they're good filenames we can just sort and take the last
+        pnglist = sorted(glob.glob(pout + "*.png"))
+        latest = pnglist[-1]
+        latestname = 'g16aws_latest.png'
+        ldir = "%s/%s" % (outdir, latestname)
+        try:
+            copyfile(latest, ldir)
+        except Exception as err:
+            # TODO: Figure out the proper/specific exception to catch
+            print(str(err))
+            print("WHOOPSIE! COPY FAILED")
 
         time.sleep(sleep)
 
