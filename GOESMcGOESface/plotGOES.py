@@ -334,6 +334,7 @@ def makePlots(inloc, outloc, forceRegen=False):
 
     # roads will be a dict with keys of rclasses and values of geometries
     roads = parseRoads(rclasses)
+    print("Roads parsed!")
 
     # Construct/grab the color map.
     #   Purposefully leaving this hardcoded here for now, because it's
@@ -346,6 +347,7 @@ def makePlots(inloc, outloc, forceRegen=False):
     i = 0
     for each in flist:
         outpname = "%s/%s.png" % (outloc, os.path.basename(each))
+        print(outpname)
 
         # Logic to skip stuff already completed, or just redo everything
         if forceRegen is True:
