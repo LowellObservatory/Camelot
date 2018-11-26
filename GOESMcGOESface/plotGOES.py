@@ -342,10 +342,9 @@ def makePlots(inloc, forceRegen=False):
     vmin, vmax = 160, 330
     gcmap = getCmap(vmin=vmin, vmax=vmax)
 
-    # k is the outer loop counter
     # i is the number-of-images processed counter
     i = 0
-    for k, each in enumerate(flist):
+    for each in flist:
         outpname = "./GOESMcGOESface/pngs/%s.png" % (os.path.basename(each))
 
         # Logic to skip stuff already completed, or just redo everything
@@ -389,6 +388,7 @@ def makePlots(inloc, forceRegen=False):
             # This is the function that actually handles the reprojection
             ogrid, ngrid, ndat, pCoeff = crop_image(dat, img, cLat, cLon,
                                                     pCoeff=pCoeff)
+            # print(ogrid)
 
             # Get the new projection/transformation info for the plot axes
             crs = ngrid.to_cartopy_crs()
