@@ -76,7 +76,6 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
         print("Plots done!")
 
         print("Moving the latest to the usual location...")
-
         # Since they're good filenames we can just sort and take the last
         pnglist = sorted(glob.glob(pout + "*.png"))
         latest = pnglist[-1]
@@ -90,6 +89,7 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
             print(str(err))
             print("WHOOPSIE! COPY FAILED")
 
+        print("Sleeping for %03d seconds..." % (sleep))
         time.sleep(sleep)
 
 
