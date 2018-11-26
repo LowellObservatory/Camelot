@@ -321,7 +321,6 @@ def makePlots(inloc, outloc, forceRegen=False):
     cLat = 34.7443
     cLon = -111.4223
 
-    inloc = './GOESMcGOESface/data/'
     rclasses = ["Interstate", "Federal"]
     # rclasses = ["Interstate", "Federal", "State", "Other"]
 
