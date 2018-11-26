@@ -18,6 +18,8 @@ import configparser as conf
 from os.path import basename
 from datetime import datetime as dt
 
+from ligmos.utils import logs
+
 import goes16_aws as gaws
 import plotGOES as pgoes
 
@@ -77,9 +79,14 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
 if __name__ == "__main__":
     outdir = "./outputs/"
     awsconf = "./awsCreds.conf"
-    creds = parseConfFile(awsconf)
     forceDownloads = False
     forceRegenPlot = False
+    logname = './logs/goesmcgoesface.log'
+
+    # Set up logging
+    logs.setup_logging(logName=logname, nLogs=30)
+
+    creds = parseConfFile(awsconf)
 
     print("Starting infinite loop...")
     main(outdir, creds, forceDown=forceDownloads, forceRegen=forceRegenPlot)
