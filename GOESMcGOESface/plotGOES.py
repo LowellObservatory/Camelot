@@ -25,7 +25,7 @@ from netCDF4 import Dataset
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+from matplotlib.colors import ListedColormap
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
@@ -313,17 +313,17 @@ def getCmap(vmin=160, vmax=330, trans=None):
     return newcmp
 
 
-if __name__ == "__main__":
+def makePlots(inloc, forceRegen=False):
     # Warning, you may explode
     #  https://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.switch_backend
     plt.switch_backend("Agg")
 
     cLat = 34.7443
     cLon = -111.4223
-    dctAlt = 2361
-    forceRegen = False
+
     inloc = './GOESMcGOESface/data/'
-    rclasses = ["Interstate", "Federal"]#, "State", "Other"]
+    rclasses = ["Interstate", "Federal"]
+    # rclasses = ["Interstate", "Federal", "State", "Other"]
 
     flist = sorted(glob.glob(inloc + "*.nc"))
 
@@ -335,7 +335,10 @@ if __name__ == "__main__":
     # roads will be a dict with keys of rclasses and values of geometries
     roads = parseRoads(rclasses)
 
-    # Construct/grab the color map
+    # Construct/grab the color map.
+    #   Purposefully leaving this hardcoded here for now, because it's
+    #   so easy to make a god damn mess of the colormap if you don't know
+    #   what you're doing.
     vmin, vmax = 160, 330
     gcmap = getCmap(vmin=vmin, vmax=vmax)
 

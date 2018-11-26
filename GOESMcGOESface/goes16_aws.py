@@ -16,34 +16,13 @@ Requires AWS credentials in the awsCreds.conf file.
 from __future__ import division, print_function, absolute_import
 
 import glob
-import configparser as conf
 from os import mkdir
 from os.path import basename
-from datetime import datetime as dt
+
 from datetime import timedelta as td
 
 import boto3
 import botocore
-
-
-def parseConfFile(filename):
-    """
-    """
-    try:
-        config = conf.SafeConfigParser()
-        config.read_file(open(filename, 'r'))
-    except IOError as err:
-        config = None
-        print(str(err))
-        return config
-
-    sections = config.sections()
-    tsections = ' '.join(sections)
-
-    print("Found the following sections in the configuration file:")
-    print("%s\n" % tsections)
-
-    return config
 
 
 def checkOutDir(outdir):
@@ -64,7 +43,8 @@ def checkOutDir(outdir):
     return flist
 
 
-def main(aws_keyid, aws_secretkey, now, outdir, timedelta=6):
+def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
+                timedelta=6, forceDown=False):
     """
     AWS IAM user key
     AWS IAM user secret key
@@ -147,6 +127,9 @@ def main(aws_keyid, aws_secretkey, now, outdir, timedelta=6):
                         print("Downloaded: %s" % (oname))
                     else:
                         print(oname, "already downloaded!")
+                        if forceDown is True:
+                            print("Download forced.")
+                            buck.download_file(objs.key, oname)
 
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "404":
@@ -157,18 +140,18 @@ def main(aws_keyid, aws_secretkey, now, outdir, timedelta=6):
     return matches
 
 
-if __name__ == "__main__":
-    outdir = "./GOESMcGOESface/data/"
-    awsconf = "./GOESMcGOESface/awsCreds.conf"
-    creds = parseConfFile(awsconf)
+# if __name__ == "__main__":
+#     outdir = "./GOESMcGOESface/data/"
+#     awsconf = "./GOESMcGOESface/awsCreds.conf"
+#     creds = parseConfFile(awsconf)
 
-    aws_keyid = creds['s3_RO']['aws_access_key_id']
-    aws_secretkey = creds['s3_RO']['aws_secret_access_key']
+#     aws_keyid = creds['s3_RO']['aws_access_key_id']
+#     aws_secretkey = creds['s3_RO']['aws_secret_access_key']
 
-    when = dt.utcnow()
+#     when = dt.utcnow()
 
-    ffiles = main(aws_keyid, aws_secretkey, when, outdir, timedelta=6)
+#     ffiles = main(aws_keyid, aws_secretkey, when, outdir, timedelta=6)
 
-    print("Found the following files:")
-    for f in ffiles:
-        print(basename(f.key))
+#     print("Found the following files:")
+#     for f in ffiles:
+#         print(basename(f.key))
