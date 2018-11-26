@@ -4,10 +4,10 @@ FROM pytest
 
 USER lig:lig
 WORKDIR /home/lig/Codes/
-COPY --chown=lig:lig . ./GOESMcGOESFace/
-RUN mkdir GOESMcGOESFace/images GOESMcGOESFace/rawdata
+COPY --chown=lig:lig . ./GOESMcGOESface/
+RUN mkdir GOESMcGOESface/outputs GOESMcGOESface/outputs/pngs GOESMcGOESface/outputs/raws
 
 # Default command to issue when starting this image in a container
 USER lig
-WORKDIR /home/lig/Codes/GOESMcGOESFace/
+WORKDIR /home/lig/Codes/GOESMcGOESface/
 CMD ["python goes16aws_looper.py"]
