@@ -12,6 +12,9 @@ from __future__ import division, print_function, absolute_import
 
 import time
 import shutil
+from datetime import datetime as dt
+
+from PIL import Image, ImageDraw, ImageFont
 
 from requests import get as httpget
 from requests.exceptions import ConnectionError as RCE
@@ -78,6 +81,29 @@ def camGrabbie(cam):
             raise RCE
 
 
+def tagErrorImage(failimg, location):
+    """
+    Given the failure image filename, add a timestamp to it
+    starting at the specified pixel location (lower left corner of text).
+
+    Leaving this hardcoded for now since it is something that's probably
+    deployment dependent, but it could be abstracted with work/effort.
+
+    Will save the resulting image to location when it's done.
+    """
+    timestamp = dt.utcnow()
+    timestring = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
+    textloc = (40, 200)
+
+    img = Image.open(failimg)
+    dtxt = ImageDraw.Draw(img)
+
+    font = ImageFont.FreeTypeFont('./fonts/GlacialIndifference-Bold.otf',
+                                  size=24, encoding='unic')
+    dtxt.text(textloc, timestring, fill=(255, 76, 76), font=font)
+    img.save(location)
+
+
 def grabSet(camset, failimg, interval=0.5):
     """
     Grab all camera images
@@ -90,7 +116,8 @@ def grabSet(camset, failimg, interval=0.5):
             camGrabbie(currentCamera)
         except RCE as err:
             print(str(err))
-            shutil.copy(failimg, currentCamera.floc)
+            tagErrorImage(failimg, currentCamera.floc)
+            # shutil.copy(failimg, currentCamera.floc)
 
         time.sleep(interval)
 
