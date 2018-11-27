@@ -13,3 +13,9 @@ quickly chugged thru the data to figure that out.
 
 Prototype for grabbing the current GOES-16 data and manipulating it ourselves for display,
 so we don't have to depend on anything else for the DCT & NightWatch.
+
+## WebcamMcWebcamface
+
+Prototype for grabbing the current image from a webcam or set of webcams. 
+Can be used with any webam that has a simple cgi-bin type interface that returns a picture 
+when you issue an authenticated HTTP GET request to the right URL.
