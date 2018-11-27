@@ -6,7 +6,6 @@
 #
 #  Created on 24 Oct 2018
 #
-#
 #  @author: rhamilton
 
 from __future__ import division, print_function, absolute_import
