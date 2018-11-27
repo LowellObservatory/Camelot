@@ -26,7 +26,7 @@ groups for Earth/environmental science, too.
 ### Additional Shapefiles
 
 I'm using https://www.naturalearthdata.com/downloads/10m-cultural-vectors/roads/ for 
-road information, explicitly parsed to only get a subset. 
+road information, explicitly parsed to only get a subset of road types/categories. 
 
 See the ```parseRoads``` function for more details but it's pretty simple using the attributes
 in the above mentioned shapefile.
