@@ -4,7 +4,7 @@ FROM pytest
 
 USER lig:lig
 WORKDIR /home/lig/Codes/
-COPY --chown=lig:lig . ./dct_asc/
+COPY --chown=lig:lig . ./WebcamMcWebcamface/
 RUN mkdir WebcamMcWebcamface/images
 
 # Default command to issue when starting this image in a container
