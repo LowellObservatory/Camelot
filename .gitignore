@@ -1,3 +1,4 @@
+*.pyc
 *.fits
 *.fit
 *.FIT
@@ -8,3 +9,5 @@ pngs
 *.conf
 *.nc
 *.swp
+WebcamMcWebcamface/images/*
+WebcamMcWebcamface/logs/*
