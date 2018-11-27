@@ -100,7 +100,7 @@ if __name__ == "__main__":
     forceRegenPlot = False
     logname = './logs/goesmcgoesface.log'
 
-    # Set up logging
+    # Set up logging (using ligmos' quick 'n easy wrapper)
     logs.setup_logging(logName=logname, nLogs=30)
 
     creds = parseConfFile(awsconf)
