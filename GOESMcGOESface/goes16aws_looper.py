@@ -67,7 +67,8 @@ def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
             # Make it "current" to not delete it
             diff = 0
         if diff > maxage:
-            print("Deleting %s since it's too old (%f)" % (each, diff))
+            print("Deleting %s since it's too old (%.3f hr)" %
+                  (each, diff/60./60.))
             try:
                 os.remove(each)
             except OSError as err:
