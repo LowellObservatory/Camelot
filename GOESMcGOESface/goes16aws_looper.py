@@ -21,10 +21,37 @@ from shutil import copyfile
 from os.path import basename
 from datetime import datetime as dt
 
+import imageio
 from ligmos.utils import logs
 
 import goes16_aws as gaws
 import plotGOES as pgoes
+
+
+def movingPictures(inlist, outname, now, videoage=6., dtfmt="%Y%j%H%M%S%f"):
+    """
+    processing is determined by the file extension; it only knows about
+    'gif' and 'mp4' at present!
+
+    'videoage' is in hours
+    """
+    maxage = videoage * 60. * 60.
+    images = []
+    for filename in inlist:
+        diff = getFilenameAgeDiff(filename, now, dtfmt=dtfmt)
+        if diff < maxage:
+            images.append(imageio.imread(filename))
+    outname = ''
+    print("%d files found within %d h of now for the moving pictures" %
+          (len(images), videoage))
+
+    if outname.lower().endswith("mp4"):
+        imageio.mimsave(outname, images, quality=7, macro_block_size=10)
+        print("MP4 saved as %s" % (outname))
+    elif outname.lower().endswith("gif"):
+        imageio.mimsave(outname, images, loop=0, duration=0.066,
+                        palettesize=512)
+        print("GIF saved as %s" % (outname))
 
 
 def parseConfFile(filename):
@@ -47,6 +74,24 @@ def parseConfFile(filename):
     return config
 
 
+def getFilenameAgeDiff(fname, now, dtfmt="%Y%j%H%M%S%f"):
+    """
+    NOTE: HERE 'maxage' is already in seconds! Convert before calling.
+    """
+    # Need to basename it to get just the actual filename and not the path
+    beach = os.path.basename(fname)
+    try:
+        dts = dt.strptime(beach.split("_")[0], dtfmt)
+        diff = (now - dts).total_seconds()
+    except Exception as err:
+        # TODO: Catch the right datetime conversion error!
+        print(str(err))
+        # Make it "current" to not delete it
+        diff = 0
+
+    return diff
+
+
 def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
     """
     'maxage' is in hours
@@ -56,16 +101,7 @@ def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
 
     remaining = []
     for each in flist:
-        # Need to basename it to get just the actual filename and not the path
-        beach = os.path.basename(each)
-        try:
-            dts = dt.strptime(beach.split("_")[0], dtfmt)
-            diff = (now - dts).total_seconds()
-        except Exception as err:
-            # TODO: Catch the right datetime conversion error!
-            print(str(err))
-            # Make it "current" to not delete it
-            diff = 0
+        diff = getFilenameAgeDiff(each, now, dtfmt=dtfmt)
         if diff > maxage:
             print("Deleting %s since it's too old (%.3f hr)" %
                   (each, diff/60./60.))
@@ -100,6 +136,8 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
 
     # Filename to copy the last/latest image into for easier web integration
     latestname = 'g16aws_latest.png'
+    vid1 = 'g16aws_latest.gif'
+    vid2 = 'g16aws_latest.mp4'
 
     # Need this for parsing the filename into a dt obj
     dtfmt = "%Y%j%H%M%S%f"
@@ -149,7 +187,10 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
                 print(str(err))
                 print("WHOOPSIE! COPY FAILED")
 
-        # Make the GIF!
+        # Make the movies!
+        print("Making movies...")
+        movingPictures(cpng, vid1, when, videoage=vidhours, dtfmt=dtfmt)
+        movingPictures(cpng, vid2, when, videoage=vidhours, dtfmt=dtfmt)
 
         print("Sleeping for %03d seconds..." % (sleep))
         time.sleep(sleep)
