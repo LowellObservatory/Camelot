@@ -9,5 +9,7 @@ pngs
 *.conf
 *.nc
 *.swp
+*.gif
+*.mp4
 WebcamMcWebcamface/images/*
 WebcamMcWebcamface/logs/*

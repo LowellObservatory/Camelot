@@ -52,7 +52,7 @@ def movingPictures(inlist, outname, now, videoage=6., dtfmt="%Y%j%H%M%S%f"):
     elif outname.lower().endswith("gif"):
         print("Starting GIF creation...")
         imageio.mimsave(outname, images, loop=0, duration=0.066,
-                        palettesize=512)
+                        palettesize=256)
         print("GIF saved as %s" % (outname))
 
 
