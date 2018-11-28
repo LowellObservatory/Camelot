@@ -56,8 +56,10 @@ def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
 
     remaining = []
     for each in flist:
+        # Need to basename it to get just the actual filename and not the path
+        beach = os.path.basename(each)
         try:
-            dts = dt.strptime(each.split("_")[0], dtfmt)
+            dts = dt.strptime(beach.split("_")[0], dtfmt)
             diff = (now - dts).total_seconds()
         except Exception as err:
             # TODO: Catch the right datetime conversion error!
