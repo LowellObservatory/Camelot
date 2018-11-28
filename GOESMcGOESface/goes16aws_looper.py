@@ -191,6 +191,8 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
 
         # Make the movies!
         print("Making movies...")
+        vid1 = "%s/%s" % (outdir, vid1)
+        vid2 = "%s/%s" % (outdir, vid2)
         movingPictures(cpng, vid1, when, videoage=vidhours, dtfmt=dtfmt)
         movingPictures(cpng, vid2, when, videoage=vidhours, dtfmt=dtfmt)
 
