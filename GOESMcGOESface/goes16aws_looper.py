@@ -13,6 +13,7 @@
 
 from __future__ import division, print_function, absolute_import
 
+import os
 import time
 import glob
 import configparser as conf
@@ -46,16 +47,60 @@ def parseConfFile(filename):
     return config
 
 
-def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
+def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
     """
-    outdir is the *base* directory for outputs, stuff will be put into
+    'maxage' is in hours
+    """
+    maxage *= 60. * 60.
+    flist = sorted(glob.glob(inloc + fmask))
+
+    remaining = []
+    for each in flist:
+        try:
+            dts = dt.strptime(each.split("_")[0], dtfmt)
+            diff = (now - dts).total_seconds()
+        except Exception as err:
+            # TODO: Catch the right datetime conversion error!
+            print(str(err))
+            # Make it "current" to not delete it
+            diff = 0
+        if diff > maxage:
+            print("Deleting %s since it's too old (%f)" % (each, diff))
+            try:
+                os.remove(each)
+            except OSError as err:
+                # At least see what the issue was
+                print(str(err))
+        else:
+            remaining.append(each)
+
+    return remaining
+
+
+def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
+         forceDown=False, forceRegen=False):
+    """
+    'outdir' is the *base* directory for outputs, stuff will be put into
     subdirectories inside of it.
+
+    'keephours' is the number of hours of data to keep on hand. Old stuff
+    is deleted to keep things managable
+
+    'vidhours' is the number of hours of data to make into a GIF (or MP4).
+    6 hours equates to about 72 images in the video
     """
     aws_keyid = creds['s3_RO']['aws_access_key_id']
     aws_secretkey = creds['s3_RO']['aws_secret_access_key']
 
     dout = outdir + "/raws/"
     pout = outdir + "/pngs/"
+
+    # Filename to copy the last/latest image into for easier web integration
+    latestname = 'g16aws_latest.png'
+
+    # Need this for parsing the filename into a dt obj
+    dtfmt = "%Y%j%H%M%S%f"
+
     while True:
         # Time (in hours!) to search for new files relative to the present
         #   If they exist, they'll be skipped unless forceRegen is True
@@ -72,22 +117,36 @@ def main(outdir, creds, sleep=300., forceDown=False, forceRegen=False):
             print(basename(f.key))
 
         print("Making the plots...")
+        # TODO: Return the projection coordinates (and a timestamp of them)
+        #   so they can be reused between loop cycles.
         pgoes.makePlots(dout, pout, forceRegen=forceRegen)
         print("Plots done!")
 
-        print("Moving the latest to the usual location...")
+        # ... Do what the function says! Return a list of current files
+        #   which will then be used as the input for the GIF/video
+        cpng = clearOldFiles(pout, "*.png", when,
+                             maxage=keephours, dtfmt=dtfmt)
+        craw = clearOldFiles(dout, "*.nc", when,
+                             maxage=keephours, dtfmt=dtfmt)
+
+        print("%d, %d raw and png files remain within the last %.1f hours" %
+              (len(cpng), len(craw), keephours))
+
+        print("Copying the latest/last file to an accessible spot...")
         # Since they're good filenames we can just sort and take the last
-        pnglist = sorted(glob.glob(pout + "*.png"))
-        latest = pnglist[-1]
-        latestname = 'g16aws_latest.png'
-        ldir = "%s/%s" % (outdir, latestname)
-        try:
-            copyfile(latest, ldir)
-            print("Latest file copy done!")
-        except Exception as err:
-            # TODO: Figure out the proper/specific exception to catch
-            print(str(err))
-            print("WHOOPSIE! COPY FAILED")
+        #   if there are actually any current ones left of course
+        if cpng != []:
+            latest = cpng[-1]
+            ldir = "%s/%s" % (outdir, latestname)
+            try:
+                copyfile(latest, ldir)
+                print("Latest file copy done!")
+            except Exception as err:
+                # TODO: Figure out the proper/specific exception to catch
+                print(str(err))
+                print("WHOOPSIE! COPY FAILED")
+
+        # Make the GIF!
 
         print("Sleeping for %03d seconds..." % (sleep))
         time.sleep(sleep)
