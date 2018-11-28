@@ -143,7 +143,7 @@ def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
     return remaining
 
 
-def main(outdir, creds, sleep=150., keephours=24., vidhours=3.,
+def main(outdir, creds, sleep=150., keephours=24., vidhours=4.,
          forceDown=False, forceRegen=False):
     """
     'outdir' is the *base* directory for outputs, stuff will be put into
