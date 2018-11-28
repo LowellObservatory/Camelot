@@ -18,7 +18,6 @@ import time
 import glob
 import configparser as conf
 from shutil import copyfile
-from os.path import basename
 from datetime import datetime as dt
 
 import imageio
@@ -51,7 +50,9 @@ def movingPictures(inlist, outname, now, videoage=6., dtfmt="%Y%j%H%M%S%f"):
         print("MP4 saved as %s" % (outname))
     elif outname.lower().endswith("gif"):
         print("Starting GIF creation...")
-        imageio.mimsave(outname, images, loop=0, duration=0.066,
+        # Buffer the last few frames to make it not loop in an annoying way
+        images += [images[-1]*10]
+        imageio.mimsave(outname, images, loop=0, duration=0.150,
                         palettesize=256)
         print("GIF saved as %s" % (outname))
 
@@ -137,9 +138,10 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
     pout = outdir + "/pngs/"
 
     # Filename to copy the last/latest image into for easier web integration
-    latestname = 'g16aws_latest.png'
-    vid1 = 'g16aws_latest.gif'
-    vid2 = 'g16aws_latest.mp4'
+    #   Ok to just hardcopy these since they'll be staticly named
+    latestname = '%s/g16aws_latest.png' % (outdir)
+    vid1 = "%s/g16aws_latest.gif" % (outdir)
+    vid2 = "%s/g16aws_latest.mp4" % (outdir)
 
     # Need this for parsing the filename into a dt obj
     dtfmt = "%Y%j%H%M%S%f"
@@ -157,7 +159,7 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
 
         print("Found the following files:")
         for f in ffiles:
-            print(basename(f.key))
+            print(os.path.basename(f.key))
 
         print("Making the plots...")
         # TODO: Return the projection coordinates (and a timestamp of them)
@@ -180,9 +182,8 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
         #   if there are actually any current ones left of course
         if cpng != []:
             latest = cpng[-1]
-            ldir = "%s/%s" % (outdir, latestname)
             try:
-                copyfile(latest, ldir)
+                copyfile(latest, latestname)
                 print("Latest file copy done!")
             except Exception as err:
                 # TODO: Figure out the proper/specific exception to catch
@@ -191,8 +192,6 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=6.,
 
         # Make the movies!
         print("Making movies...")
-        vid1 = "%s/%s" % (outdir, vid1)
-        vid2 = "%s/%s" % (outdir, vid2)
         movingPictures(cpng, vid1, when, videoage=vidhours, dtfmt=dtfmt)
         movingPictures(cpng, vid2, when, videoage=vidhours, dtfmt=dtfmt)
 
