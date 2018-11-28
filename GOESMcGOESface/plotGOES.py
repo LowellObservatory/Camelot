@@ -395,7 +395,7 @@ def makePlots(inloc, outloc, forceRegen=False):
             crs = ngrid.to_cartopy_crs()
 
             # Figure creation
-            fig = plt.figure(figsize=(8, 10))
+            fig = plt.figure(figsize=(8, 10), dpi=100)
             ax = plt.axes(projection=crs)
 
             # Some custom stuff
@@ -438,7 +438,8 @@ def makePlots(inloc, outloc, forceRegen=False):
                          verticalalignment='center',
                          color='white', fontweight='bold', zorder=200)
 
-            plt.savefig(outpname, pad_inches=0, bbox_inches='tight')
+            plt.savefig(outpname, pad_inches=0, bbox_inches='tight',
+                        dpi=100, aspect='equal')
             plt.close()
 
             # Make sure to save the current timestamp for comparison the
