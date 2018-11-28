@@ -29,7 +29,7 @@ from matplotlib.colors import ListedColormap
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
-import cartopy.io.shapereader as shapereader
+import cartopy.io.shapereader as cshape
 
 
 def readNC(filename):
@@ -223,11 +223,11 @@ def parseRoads(rclasses):
         Trail
         Ferry
     """
-    rds = shapereader.natural_earth(resolution='10m',
-                                    category='cultural',
-                                    name='roads_north_america')
+    rds = cshape.natural_earth(resolution='10m',
+                               category='cultural',
+                               name='roads_north_america')
 
-    rdsrec = shapereader.Reader(rds)
+    rdsrec = cshape.Reader(rds)
 
     rdict = {}
     # A dict is far easier to interact with so make one
