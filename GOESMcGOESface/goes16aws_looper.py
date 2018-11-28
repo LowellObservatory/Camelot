@@ -41,14 +41,16 @@ def movingPictures(inlist, outname, now, videoage=6., dtfmt="%Y%j%H%M%S%f"):
         diff = getFilenameAgeDiff(filename, now, dtfmt=dtfmt)
         if diff < maxage:
             images.append(imageio.imread(filename))
-    outname = ''
+
     print("%d files found within %d h of now for the moving pictures" %
           (len(images), videoage))
 
     if outname.lower().endswith("mp4"):
+        print("Starting MP4 creation...")
         imageio.mimsave(outname, images, quality=7, macro_block_size=10)
         print("MP4 saved as %s" % (outname))
     elif outname.lower().endswith("gif"):
+        print("Starting GIF creation...")
         imageio.mimsave(outname, images, loop=0, duration=0.066,
                         palettesize=512)
         print("GIF saved as %s" % (outname))
