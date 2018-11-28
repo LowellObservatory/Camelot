@@ -138,20 +138,3 @@ def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
                 raise
 
     return matches
-
-
-# if __name__ == "__main__":
-#     outdir = "./GOESMcGOESface/data/"
-#     awsconf = "./GOESMcGOESface/awsCreds.conf"
-#     creds = parseConfFile(awsconf)
-
-#     aws_keyid = creds['s3_RO']['aws_access_key_id']
-#     aws_secretkey = creds['s3_RO']['aws_secret_access_key']
-
-#     when = dt.utcnow()
-
-#     ffiles = main(aws_keyid, aws_secretkey, when, outdir, timedelta=6)
-
-#     print("Found the following files:")
-#     for f in ffiles:
-#         print(basename(f.key))
