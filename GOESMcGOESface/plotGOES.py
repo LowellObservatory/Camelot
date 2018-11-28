@@ -134,7 +134,7 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
         pCoeff = pr.kd_tree.get_neighbour_info(old_grid, area_def, 5000.,
                                                neighbours=1, epsilon=0.,
                                                nprocs=1)
-        print('Transformation calculated from {}'.format(old_grid))
+        # print('Old projection information: {}'.format(old_grid))
     else:
         # NOTE: I'm not rechecking anything, I'm just assuming it's all good
         #   and reusing it.  It'll probably look messed up in some obvious
@@ -297,11 +297,11 @@ def getCmap(vmin=160, vmax=330, trans=None):
     #    If vmin == 330 and vmax == 160
 
     # Second option is number of entries in the map (lut)
-    c0 = cm.get_cmap("twilight_shifted", 128)
+    c0 = cm.get_cmap("twilight_shifted", 256)
     # c1 = cm.get_cmap("gist_earth", 80)
-    c1 = cm.get_cmap("rainbow_r", 128)
-    c2 = cm.get_cmap("bone_r", 128)
-    c3 = cm.get_cmap("bone", 128)
+    c1 = cm.get_cmap("rainbow_r", 256)
+    c2 = cm.get_cmap("bone_r", 256)
+    c3 = cm.get_cmap("bone", 256)
 
     newcolors = np.vstack((c0(np.linspace(0, 1, c0p)),
                            c1(np.linspace(0, 1, c1p)),
@@ -383,19 +383,42 @@ def makePlots(inloc, outloc, forceRegen=False):
                 if tend.day != tprev.day:
                     pCoeff = None
 
-            # Grab just the image data & quickly gamma correct
+            # Grab just the image data
             img = dat['CMI'][:]
 
             # This is the function that actually handles the reprojection
             ogrid, ngrid, ndat, pCoeff = crop_image(dat, img, cLat, cLon,
                                                     pCoeff=pCoeff)
-            # print(ogrid)
+
+            print('Old projection information: {}'.format(ogrid))
+            print('NEW projection information: {}'.format(ngrid))
 
             # Get the new projection/transformation info for the plot axes
             crs = ngrid.to_cartopy_crs()
 
+            # Get the proper plot extents so we have no whitespace
+            print(crs.bounds)
+            prlon = (crs.x_limits[1] - crs.x_limits[0])
+            prlat = (crs.y_limits[1] - crs.y_limits[0])
+            # Ultimate image width/height
+            paspect = prlon/prlat
+
+            # !!! WARNING !!!
+            #   I hate this kludge, but it works if you let the aspect stretch
+            #   just a tiny bit. Necessary for the MP4 creation because the
+            #   compression algorithm needs an even number divisor
+            figsize = (7., np.round(7./paspect, decimals=2))
+            print(prlon, prlat, paspect)
+            print(figsize)
+
             # Figure creation
-            fig = plt.figure(figsize=(8, 10), dpi=100)
+            fig = plt.figure(figsize=figsize, dpi=100)
+
+            # Needed to remove any whitespace/padding around the imshow()
+            plt.subplots_adjust(left=0., right=1., top=1., bottom=0.)
+
+            # Tell matplotlib we're using a map projection so cartopy
+            #   takes over and overloades Axes() with GeoAxes()
             ax = plt.axes(projection=crs)
 
             # Some custom stuff
@@ -405,6 +428,7 @@ def makePlots(inloc, outloc, forceRegen=False):
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
                        vmin=vmin, vmax=vmax, interpolation='none',
                        cmap=gcmap)
+                    #    aspect='auto')
             # plt.colorbar()
 
             # Add the informational bar at the top, using info directly
@@ -438,8 +462,7 @@ def makePlots(inloc, outloc, forceRegen=False):
                          verticalalignment='center',
                          color='white', fontweight='bold', zorder=200)
 
-            plt.savefig(outpname, pad_inches=0, bbox_inches='tight',
-                        dpi=100, aspect='equal')
+            plt.savefig(outpname, dpi=100)
             plt.close()
 
             # Make sure to save the current timestamp for comparison the
