@@ -11,5 +11,6 @@ pngs
 *.swp
 *.gif
 *.mp4
+*/logs/*
 WebcamMcWebcamface/images/*
-WebcamMcWebcamface/logs/*
+CloudyMcCloudface/subbed/*
