@@ -9,6 +9,10 @@ It turned out that when the sidereal tracking was on, we were getting a big peri
 associated with a belt in the RA drive that needed replacing.  This is the code that 
 quickly chugged thru the data to figure that out.
 
+## CloudyMcCloudface
+
+Prototype for assessing all sky camera images and coming up with a 'cloudiness' metric.
+
 ## GOESMcGOESface
 
 Prototype for grabbing the current GOES-16 data and manipulating it ourselves for display,
