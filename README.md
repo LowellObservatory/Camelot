@@ -1,5 +1,9 @@
 # Camelot
-'Tis a silly place. Repository for one offs and toy models to explore random topics.
+'Tis a silly place. 
+
+[![Monty Python's Holy Grail Camelot Scene](https://img.youtube.com/vi/SQCArh_R9dY/0.jpg)](https://www.youtube.com/watch?v=SQCArh_R9dY)
+
+Repository for one offs and toy models to explore random topics.
 
 ## CentroidMcCentroidface
 
