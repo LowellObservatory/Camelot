@@ -240,8 +240,7 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=4.,
                 if len(cpng) < nstaticfiles:
                     lindex = len(cpng)
                 else:
-                    # Zero indexed!
-                    lindex = nstaticfiles - 1
+                    lindex = nstaticfiles
 
                 # It's easier to do this via reverse list indicies
                 icount = 0
