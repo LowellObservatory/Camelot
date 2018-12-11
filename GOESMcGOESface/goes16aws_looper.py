@@ -245,7 +245,7 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=4.,
 
                 # It's easier to do this via reverse list indicies
                 icount = 0
-                for findex in range(-1*lindex, 1, 1):
+                for findex in range(-1*lindex, 0, 1):
                     try:
                         lname = "%s/goes_latest_%03d.png" % (lout, icount)
                         icount += 1
