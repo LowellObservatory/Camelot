@@ -235,19 +235,20 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=4.,
             print("Copying the latest/last files to an accessible spot...")
             # Since they're good filenames we can just sort and take the last
             #   if there are actually any current ones left of course
+            nstaticfiles = 48
             if cpng != []:
-                if len(cpng) < 48:
+                if len(cpng) < nstaticfiles:
                     lindex = len(cpng)
                 else:
                     # Zero indexed!
-                    lindex = 47
+                    lindex = nstaticfiles - 1
 
                 # It's easier to do this via reverse list indicies
-                lindex = 47
-                for findex in range(-1, lindex, -1):
+                icount = 0
+                for findex in range(-1*lindex, 1, 1):
                     try:
-                        lname = "%s/goes_latest_%03d.png" % (lout, lindex)
-                        lindex -= 1
+                        lname = "%s/goes_latest_%03d.png" % (lout, icount)
+                        icount += 1
                         copyfile(cpng[findex], lname)
                     except Exception as err:
                         # TODO: Figure out the proper/specific exception
