@@ -18,11 +18,11 @@ from __future__ import division, print_function, absolute_import
 import glob
 from os import mkdir
 from os.path import basename
-
 from datetime import timedelta as td
 
 import boto3
 import botocore
+import numpy as np
 
 
 def checkOutDir(outdir):
@@ -68,10 +68,16 @@ def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
     donelist = checkOutDir(outdir)
 
     # Sample key:
-    # ABI-L2-CMIPC/2018/319/23/OR_ABI-L2-CMIPC-M3C13_G16_s20183192332157_e20183192334541_c20183192334582.nc
+    # ABI-L2-CMIPC/2018/319/23/OR_ABI-L2-CMIPC-M3C13_G16_ +
+    #                          s20183192332157_e20183192334541_ +
+    #                          c20183192334582.nc
 
     # Construct the key prefixes between the oldest and the newest
     querybins = []
+
+    # timedelta MUST be an int...
+    timedelta = np.int(np.round(timedelta, decimals=0))
+
     for i in range(timedelta, -1, -1):
         delta = td(hours=i)
         qdt = (now - delta).timetuple()

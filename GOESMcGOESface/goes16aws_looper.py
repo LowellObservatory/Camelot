@@ -154,32 +154,55 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=4.,
 
     'vidhours' is the number of hours of data to make into a GIF (or MP4).
     6 hours equates to about 72 images in the video
+
+    Tailored for a single channel/band of output ONLY. To have multiple bands
+    outputting to a single directory this NEEDS some restructuring!!!
     """
     aws_keyid = creds['s3_RO']['aws_access_key_id']
     aws_secretkey = creds['s3_RO']['aws_secret_access_key']
 
     dout = outdir + "/raws/"
     pout = outdir + "/pngs/"
+    lout = outdir + "/nows/"
 
     # Filename to copy the last/latest image into for easier web integration
     #   Ok to just hardcopy these since they'll be staticly named
-    latestname = '%s/g16aws_latest.png' % (outdir)
-    vid1 = "%s/g16aws_latest.gif" % (outdir)
-    vid2 = "%s/g16aws_latest.mp4" % (outdir)
+    latestname = '%s/g16aws_latest.png' % (lout)
+    vid1 = "%s/g16aws_latest.gif" % (lout)
+    vid2 = "%s/g16aws_latest.mp4" % (lout)
 
     # Need this for parsing the filename into a dt obj
     dtfmt = "%Y%j%H%M%S%f"
 
-    while True:
-        # Time (in hours!) to search for new files relative to the present
-        #   If they exist, they'll be skipped unless forceRegen is True
-        tdelta = 6
-        forceDown = False
+    # Prepare some things for plotting so we don't have to do it
+    #   forever in the main loop body
+    rclasses = ["Interstate", "Federal"]
 
+    # On the assumption that we'll plot something, downselect the full
+    #   road database into the subset we want
+    print("Parsing road data...")
+    print("\tClasses: %s" % (rclasses))
+
+    # roads will be a dict with keys of rclasses and values of geometries
+    roads = pgoes.parseRoads(rclasses)
+    print("Roads parsed!")
+
+    # Construct/grab the color map.
+    #   Purposefully leaving this hardcoded here for now, because it's
+    #   so easy to make a god damn mess of the colormap if you don't know
+    #   what you're doing.
+    vmin, vmax = 160, 330
+    gcmap = pgoes.getCmap(vmin=vmin, vmax=vmax)
+
+    print("Starting infinite loop...")
+    while True:
+        # 'keephours' is time (in hours!) to search for new files relative
+        #   to the present.
+        #   If they exist, they'll be skipped unless forceDown is True
         when = dt.utcnow()
         print("Looking for files!")
         ffiles = gaws.GOESAWSgrab(aws_keyid, aws_secretkey, when, dout,
-                                  timedelta=tdelta, forceDown=forceDown)
+                                  timedelta=keephours, forceDown=forceDown)
 
         print("Found the following files:")
         for f in ffiles:
@@ -188,36 +211,67 @@ def main(outdir, creds, sleep=150., keephours=24., vidhours=4.,
         print("Making the plots...")
         # TODO: Return the projection coordinates (and a timestamp of them)
         #   so they can be reused between loop cycles.
-        pgoes.makePlots(dout, pout, forceRegen=forceRegen)
-        print("Plots done!")
+        nplots = pgoes.makePlots(dout, pout, roads=roads, cmap=gcmap,
+                                 forceRegen=forceRegen, irange=[vmin, vmax])
+        print("%03d plots done!" % (nplots))
 
         # ... Do what the function says! Return a list of current files
         #   which will then be used as the input for the GIF/video
-        cpng = clearOldFiles(pout, "*.png", when,
-                             maxage=keephours, dtfmt=dtfmt)
-        craw = clearOldFiles(dout, "*.nc", when,
-                             maxage=keephours, dtfmt=dtfmt)
+        #
+        # NOTE: I'm literally adding a 'fudge' factor here because the initial
+        #   AWS/data query has a resolution of 1 hour, so there can sometimes
+        #   be fighting of downloading/deleting/redownloading/deleting ...
+        fudge = 1.
+        # BUT only do anything if we actually made a new file!
+        if nplots > 0:
+            cpng = clearOldFiles(pout, "*.png", when,
+                                 maxage=keephours+fudge, dtfmt=dtfmt)
+            craw = clearOldFiles(dout, "*.nc", when,
+                                 maxage=keephours+fudge, dtfmt=dtfmt)
 
-        print("%d, %d raw and png files remain within the last %.1f hours" %
-              (len(cpng), len(craw), keephours))
+            print("%d, %d raw and png files remain within %.1f + %.1f hours" %
+                  (len(cpng), len(craw), keephours, fudge))
 
-        print("Copying the latest/last file to an accessible spot...")
-        # Since they're good filenames we can just sort and take the last
-        #   if there are actually any current ones left of course
-        if cpng != []:
-            latest = cpng[-1]
-            try:
-                copyfile(latest, latestname)
-                print("Latest file copy done!")
-            except Exception as err:
-                # TODO: Figure out the proper/specific exception to catch
-                print(str(err))
-                print("WHOOPSIE! COPY FAILED")
+            print("Copying the latest/last files to an accessible spot...")
+            # Since they're good filenames we can just sort and take the last
+            #   if there are actually any current ones left of course
+            if cpng != []:
+                if len(cpng) < 48:
+                    lindex = len(cpng)
+                else:
+                    # Zero indexed!
+                    lindex = 47
 
-        # Make the movies!
-        print("Making movies...")
-        movingPictures(cpng, vid1, when, videoage=vidhours, dtfmt=dtfmt)
-        movingPictures(cpng, vid2, when, videoage=vidhours, dtfmt=dtfmt)
+                # It's easier to do this via reverse list indicies
+                lindex = 47
+                for findex in range(-1, lindex, -1):
+                    try:
+                        lname = "%s/goes_latest_%03d.png" % (lout, lindex)
+                        lindex -= 1
+                        copyfile(cpng[findex], lname)
+                    except Exception as err:
+                        # TODO: Figure out the proper/specific exception
+                        print(str(err))
+                        print("WHOOPSIE! COPY FAILED")
+
+                # Put the very last file in the last file slot
+                latest = cpng[-1]
+                try:
+                    copyfile(latest, latestname)
+                    print("Latest file copy done!")
+                except Exception as err:
+                    # TODO: Figure out the proper/specific exception to catch
+                    print(str(err))
+                    print("WHOOPSIE! COPY FAILED")
+
+            # Make the movies!
+            print("Making movies...")
+            movingPictures(cpng, vid1, when, videoage=vidhours, dtfmt=dtfmt)
+
+            # 20181210 RTH: Disabling the MP4 output for now because I hates it
+            # movingPictures(cpng, vid2, when, videoage=vidhours, dtfmt=dtfmt)
+        else:
+            print("No new files downloaded so skipping all actions.")
 
         print("Sleeping for %03d seconds..." % (sleep))
         time.sleep(sleep)
@@ -235,6 +289,5 @@ if __name__ == "__main__":
 
     creds = parseConfFile(awsconf)
 
-    print("Starting infinite loop...")
     main(outdir, creds, forceDown=forceDownloads, forceRegen=forceRegenPlot)
     print("Exiting!")

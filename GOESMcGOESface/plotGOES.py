@@ -297,6 +297,7 @@ def getCmap(vmin=160, vmax=330, trans=None):
     #    If vmin == 330 and vmax == 160
 
     # Second option is number of entries in the map (lut)
+    #   NOTE: twilight_shifted is only in matplotlib ver. >= 3.0!!!!!
     c0 = cm.get_cmap("twilight_shifted", 256)
     # c1 = cm.get_cmap("gist_earth", 80)
     c1 = cm.get_cmap("rainbow_r", 256)
@@ -313,7 +314,8 @@ def getCmap(vmin=160, vmax=330, trans=None):
     return newcmp
 
 
-def makePlots(inloc, outloc, forceRegen=False):
+def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
+              forceRegen=False):
     # Warning, you may explode
     #  https://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.switch_backend
     plt.switch_backend("Agg")
@@ -321,26 +323,32 @@ def makePlots(inloc, outloc, forceRegen=False):
     cLat = 34.7443
     cLon = -111.4223
 
-    rclasses = ["Interstate", "Federal"]
-    # rclasses = ["Interstate", "Federal", "State", "Other"]
-
     flist = sorted(glob.glob(inloc + "*.nc"))
 
-    # On the assumption that we'll plot something, downselect the full
-    #   road database into the subset we want
-    print("Parsing road data...")
-    print("\tClasses: %s" % (rclasses))
+    if roads is None:
+        rclasses = ["Interstate", "Federal"]
+        # rclasses = ["Interstate", "Federal", "State", "Other"]
 
-    # roads will be a dict with keys of rclasses and values of geometries
-    roads = parseRoads(rclasses)
-    print("Roads parsed!")
+        # On the assumption that we'll plot something, downselect the full
+        #   road database into the subset we want
+        print("Parsing road data...")
+        print("\tClasses: %s" % (rclasses))
 
-    # Construct/grab the color map.
-    #   Purposefully leaving this hardcoded here for now, because it's
-    #   so easy to make a god damn mess of the colormap if you don't know
-    #   what you're doing.
-    vmin, vmax = 160, 330
-    gcmap = getCmap(vmin=vmin, vmax=vmax)
+        # roads will be a dict with keys of rclasses and values of geometries
+        roads = parseRoads(rclasses)
+        print("Roads parsed!")
+
+    if irange is None:
+        vmin, vmax = 160, 330
+    else:
+        vmin, vmax = irange[0], irange[1]
+
+    if cmap is None:
+        # Construct/grab the color map.
+        #   Purposefully leaving this hardcoded here for now, because it's
+        #   so easy to make a god damn mess of the colormap if you don't know
+        #   what you're doing.
+        cmap = getCmap(vmin=vmin, vmax=vmax)
 
     # i is the number-of-images processed counter
     i = 0
@@ -427,8 +435,7 @@ def makePlots(inloc, outloc, forceRegen=False):
 
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
                        vmin=vmin, vmax=vmax, interpolation='none',
-                       cmap=gcmap)
-                    #    aspect='auto')
+                       cmap=cmap)
             # plt.colorbar()
 
             # Add the informational bar at the top, using info directly
@@ -469,3 +476,5 @@ def makePlots(inloc, outloc, forceRegen=False):
             #   next time through the loop!
             tprev = tend
             i += 1
+
+    return i
