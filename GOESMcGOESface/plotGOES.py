@@ -354,7 +354,6 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
     i = 0
     for each in flist:
         outpname = "%s/%s.png" % (outloc, os.path.basename(each))
-        print(outpname)
 
         # Logic to skip stuff already completed, or just redo everything
         if forceRegen is True:
