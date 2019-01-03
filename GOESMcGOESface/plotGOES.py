@@ -469,6 +469,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
                          color='white', fontweight='bold', zorder=200)
 
             plt.savefig(outpname, dpi=100)
+            print("Saved as %s." % (outpname))
             plt.close()
 
             # Make sure to save the current timestamp for comparison the
