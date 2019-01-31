@@ -129,8 +129,11 @@ def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
                     boname = basename(oname)
                     if boname not in donelist:
                         matches.append(objs)
-                        buck.download_file(objs.key, oname)
-                        print("Downloaded: %s" % (oname))
+                        try:
+                            buck.download_file(objs.key, oname)
+                            print("Downloaded: %s" % (oname))
+                        except botocore.exceptions.ReadTimeoutError:
+                            print("DOWNLOAD FAILURE! ReadTimeoutError")
                     else:
                         print(oname, "already downloaded!")
                         if forceDown is True:
