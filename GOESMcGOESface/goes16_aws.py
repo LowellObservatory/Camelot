@@ -145,5 +145,7 @@ def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
                 print("The object does not exist.")
             else:
                 raise
+        except botocore.exceptions.EndpointConnectionError:
+            print("QUERY FAILURE! EndpointConnectionError")
 
     return matches
