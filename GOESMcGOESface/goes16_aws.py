@@ -134,6 +134,9 @@ def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
                             print("Downloaded: %s" % (oname))
                         except botocore.exceptions.ReadTimeoutError:
                             print("DOWNLOAD FAILURE! ReadTimeoutError")
+                        except ConnectionError:
+                            print("DOWNLOAD FAILURE!")
+                            print("ConnectionError or subclass of it.")
                     else:
                         print(oname, "already downloaded!")
                         if forceDown is True:
