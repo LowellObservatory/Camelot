@@ -116,10 +116,20 @@ def GOESAWSgrab(aws_keyid, aws_secretkey, now, outdir,
 
                 # print("Found %s" % (ckey))
 
-                # Specific filename to search for
-                fkey = "OR_%s-M3C%02d_G16" % (inst, channel)
+                # Specific filename to search for. Do it in two parts,
+                #   one here to select the instrument/product and another
+                #   to select the desired channel
+                # Backup of original query:
+                # fkey = "OR_%s-M3C%02d_G16" % (inst, channel)
+                fkey = "OR_%s-M" % (inst)
+                chankey = "C%02d" % (channel)
 
-                if ckey.startswith(fkey):
+                # Bit of hackey magic. Sorry. Needed to ignore the "mode"
+                #   parameter but still check the channel
+                keyparts = ckey.split("_")[1].split("-")[3]
+
+                # Now only select ones that match our product and our channel
+                if ckey.startswith(fkey) and keyparts.endswith(chankey):
                     # Construct the output filename to save it as
                     oname = ckey.split("_")[4][1:]
                     oname = "%s/%s_C%02d.nc" % (outdir, oname, channel)
