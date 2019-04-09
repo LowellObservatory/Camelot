@@ -105,10 +105,16 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
 
     # Output grid centered on clat, clon. Symmetric in each extent
     #   though not necessarily symmetric in Lat/Lon
+    # lonMin = clon - lonWid
+    # lonMax = clon + lonWid
+    # latMin = clat - latWid
+    # latMax = clat + latWid
+
+    # Handpicked favorites
     lonMin = clon - lonWid
-    lonMax = clon + lonWid
+    lonMax = clon + lonWid - 1.0
     latMin = clat - latWid
-    latMax = clat + latWid
+    latMax = clat + latWid - 0.75
 
     lats = np.arange(latMin, latMax, 0.005)
     lons = np.arange(lonMin, lonMax, 0.005)
@@ -425,11 +431,8 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             #   compression algorithm needs an even number divisor
             figsize = (7., np.round(7./paspect, decimals=2))
 
-            # Results in a 700x830 image, with borders to fill out dead space
-            # figsize = (7., 8.3)
-
-            print(prlon, prlat, paspect)
-            print(figsize)
+            # print(prlon, prlat, paspect)
+            # print(figsize)
 
             # Figure creation
             fig = plt.figure(figsize=figsize, dpi=100)
@@ -466,7 +469,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             #   NOTE: Z order is important! Text should be higher than trect
             trect = mpatches.Rectangle((0.0, 0.955), width=1.0, height=0.045,
                                        edgecolor=None, facecolor='black',
-                                       fill=True, alpha=0.75, zorder=100,
+                                       fill=True, alpha=1.0, zorder=100,
                                        transform=ax.transAxes)
             ax.add_patch(trect)
 
