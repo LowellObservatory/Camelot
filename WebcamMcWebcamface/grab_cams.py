@@ -96,15 +96,19 @@ def tagErrorImage(failimg, location, camname=None):
 
     timestamp = dt.utcnow()
     timestring = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
-    textloc = (40, 200)
+    # textloc = (40, 200)
+    textloc = (175, 200)
 
     img = Image.open(failimg)
     dtxt = ImageDraw.Draw(img)
-    dtxt.text(textloc, timestring, fill=(255, 76, 76), font=font)
+    dtxt.multiline_text(textloc, timestring, fill=(255, 76, 76),
+                        align='center', font=font)
 
     if camname is not None:
-        textloc = (75, 105)
-        dtxt.text(textloc, camname, fill=(255, 76, 76), font=font)
+        # textloc = (75, 105)
+        textloc = (175, 90)
+        dtxt.multiline_text(textloc, camname, fill=(255, 76, 76),
+                            align='center', font=font)
 
     img.save(location)
 
