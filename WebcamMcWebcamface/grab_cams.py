@@ -102,17 +102,14 @@ def tagErrorImage(failimg, location, camname=None):
 
     # We don't actually need the height since I eyeballed it
     tw, _ = font.getsize(timestring)
-    ntw = 175 - tw//2
+    ntw = 170 - tw//2
 
     dtxt.text((ntw, 200), timestring, fill=(255, 76, 76), font=font)
 
     if camname is not None:
-        # textloc = (75, 105)
-        textloc = (175, 90)
-
         # Same as above
         tw, _ = font.getsize(camname)
-        ntw = 175 - tw//2
+        ntw = 170 - tw//2
         dtxt.text((ntw, 85), camname, fill=(255, 76, 76), font=font)
 
     img.save(location)
