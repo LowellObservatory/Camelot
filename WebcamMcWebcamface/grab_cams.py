@@ -81,7 +81,7 @@ def camGrabbie(cam):
             raise RCE
 
 
-def tagErrorImage(failimg, location):
+def tagErrorImage(failimg, location, camname=None):
     """
     Given the failure image filename, add a timestamp to it
     starting at the specified pixel location (lower left corner of text).
@@ -91,16 +91,27 @@ def tagErrorImage(failimg, location):
 
     Will save the resulting image to location when it's done.
     """
+    font = ImageFont.FreeTypeFont('./fonts/GlacialIndifference-Bold.otf',
+                                  size=24, encoding='unic')
+
     timestamp = dt.utcnow()
     timestring = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
-    textloc = (40, 200)
 
     img = Image.open(failimg)
     dtxt = ImageDraw.Draw(img)
 
-    font = ImageFont.FreeTypeFont('./fonts/GlacialIndifference-Bold.otf',
-                                  size=24, encoding='unic')
-    dtxt.text(textloc, timestring, fill=(255, 76, 76), font=font)
+    # We don't actually need the height since I eyeballed it
+    tw, _ = font.getsize(timestring)
+    ntw = 170 - tw//2
+
+    dtxt.text((ntw, 200), timestring, fill=(255, 76, 76), font=font)
+
+    if camname is not None:
+        # Same as above
+        tw, _ = font.getsize(camname)
+        ntw = 170 - tw//2
+        dtxt.text((ntw, 85), camname, fill=(255, 76, 76), font=font)
+
     img.save(location)
 
 
@@ -116,7 +127,8 @@ def grabSet(camset, failimg, interval=0.5):
             camGrabbie(currentCamera)
         except RCE as err:
             print(str(err))
-            tagErrorImage(failimg, currentCamera.floc)
+            tagErrorImage(failimg, currentCamera.floc,
+                          camname=currentCamera.name)
             # shutil.copy(failimg, currentCamera.floc)
 
         time.sleep(interval)

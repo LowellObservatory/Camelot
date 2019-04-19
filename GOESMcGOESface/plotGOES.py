@@ -105,10 +105,16 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
 
     # Output grid centered on clat, clon. Symmetric in each extent
     #   though not necessarily symmetric in Lat/Lon
+    # lonMin = clon - lonWid
+    # lonMax = clon + lonWid
+    # latMin = clat - latWid
+    # latMax = clat + latWid
+
+    # Handpicked favorites
     lonMin = clon - lonWid
-    lonMax = clon + lonWid
+    lonMax = clon + lonWid - 1.0
     latMin = clat - latWid
-    latMax = clat + latWid
+    latMax = clat + latWid - 0.75
 
     lats = np.arange(latMin, latMax, 0.005)
     lons = np.arange(lonMin, lonMax, 0.005)
@@ -153,6 +159,15 @@ def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
     #   a wrapper for the above two-step dance.
     # pData = pr.kd_tree.resample_nearest(old_grid, data, area_def,
     #                                     radius_of_influence=5000)
+
+    # Change the fill value of the masked array to actually be the value.
+    #   This is so it can be plotted and controlled via the colorbar rather
+    #   than just making an all white image or whatever.
+    #
+    # Yes, I made this a magic value.  The proper value depends on the choices
+    #   made in the getCmap function below, and this one looks good and is
+    #   consistent with the average color of the ground. Did it by eye.
+    pData = np.ma.filled(pData, fill_value=285.)
 
     return old_grid, area_def, pData, pCoeff
 
@@ -415,11 +430,14 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             #   just a tiny bit. Necessary for the MP4 creation because the
             #   compression algorithm needs an even number divisor
             figsize = (7., np.round(7./paspect, decimals=2))
-            print(prlon, prlat, paspect)
-            print(figsize)
+
+            # print(prlon, prlat, paspect)
+            # print(figsize)
 
             # Figure creation
             fig = plt.figure(figsize=figsize, dpi=100)
+
+            fig.patch.set_facecolor("black")
 
             # Needed to remove any whitespace/padding around the imshow()
             plt.subplots_adjust(left=0., right=1., top=1., bottom=0.)
@@ -451,7 +469,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             #   NOTE: Z order is important! Text should be higher than trect
             trect = mpatches.Rectangle((0.0, 0.955), width=1.0, height=0.045,
                                        edgecolor=None, facecolor='black',
-                                       fill=True, alpha=0.75, zorder=100,
+                                       fill=True, alpha=1.0, zorder=100,
                                        transform=ax.transAxes)
             ax.add_patch(trect)
 
@@ -467,6 +485,9 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
                          horizontalalignment='center',
                          verticalalignment='center',
                          color='white', fontweight='bold', zorder=200)
+
+            # Useful for testing getCmap changes
+            # plt.colorbar()
 
             plt.savefig(outpname, dpi=100)
             print("Saved as %s." % (outpname))
