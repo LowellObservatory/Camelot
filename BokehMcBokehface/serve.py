@@ -135,6 +135,15 @@ def make_dctweather(doc):
     doc.title = m.title
     doc.add_root(fig)
 
+    def grabNew():
+        pdata = OrderedDict()
+        for qtag in m.queries.keys():
+            pdata.update({qtag: qdata[qtag]})
+
+        print("Data reference updated")
+
+    doc.add_periodic_callback(grabNew, 30000)
+
 
 if __name__ == "__main__":
     apps = {'/dctweather': Application(FunctionHandler(make_dctweather))}
