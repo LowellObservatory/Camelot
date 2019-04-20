@@ -21,6 +21,10 @@ import dctplots.modulePlots as bplot
 import dctplots.colorWheelies as cwheels
 
 from bokeh.themes import Theme
+
+import bokeh.server as bs
+from tornado.ioloop import PeriodicCallback
+
 from bokeh.server.server import Server
 from bokeh.application import Application
 from bokeh.application.handlers.function import FunctionHandler
@@ -135,13 +139,15 @@ def make_dctweather(doc):
 if __name__ == "__main__":
     apps = {'/dctweather': Application(FunctionHandler(make_dctweather))}
 
+    print("Starting bokeh server...")
+    server = Server(apps, port=5000)
+
     # Do this as a periodic callback?  Need to do it at least once before
     #   we start so we have some data to work with initially
     qdata = batchQuery()
 
-    print("Starting bokeh server...")
-    server = Server(apps, port=5000)
-    server.start()
+    pcallback = PeriodicCallback(batchQuery, 60000, jitter=0.1)
+    pcallback.start()
 
-    # server.io_loop.add_callback(server.show, "/dctweather")
+    server.start()
     server.io_loop.start()
