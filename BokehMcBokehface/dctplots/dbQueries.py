@@ -15,12 +15,7 @@ Further description.
 
 from __future__ import division, print_function, absolute_import
 
-import numpy as np
-import pandas as pd
 from influxdb import DataFrameClient
-from influxdb.exceptions import InfluxDBClientError
-
-from ligmos import utils
 
 
 def queryConstructor(dbinfo, dtime=48, debug=False):
