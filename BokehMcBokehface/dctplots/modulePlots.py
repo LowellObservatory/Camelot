@@ -8,26 +8,25 @@
 #
 #  @author: rhamilton
 
-"""One line description of module.
+"""Collection of routines used to make good Bokeh plots.
 
-Further description.
+I admit it's a big damn mess in here.  This really needs to be cleaned
+up in the near future, and streamlined to align to the new containerized
+way that the plots are called/generated/updated.  A lot of this code could
+turn out to be vestigial from the initial version that made plot snapshots.
+    - RTH 20190426
 """
 
 from __future__ import division, print_function, absolute_import
 
-from collections import OrderedDict
-
-import numpy as np
 import datetime as dt
 
-from bokeh.themes import Theme
-from bokeh.layouts import widgetbox
-from bokeh.io import curdoc, output_file, show
-from bokeh.models import Plot, Range1d, LinearAxis, DatetimeAxis, \
-    HoverTool, CrosshairTool, CustomJSHover, Quad, Legend, LegendItem, \
-    DataTable, TableColumn
-from bokeh.models.formatters import DatetimeTickFormatter
-from bokeh.plotting import figure, output_file, save, ColumnDataSource
+import numpy as np
+
+from bokeh.models import Range1d, LinearAxis, \
+                         HoverTool, Legend, LegendItem, \
+                         DataTable, TableColumn
+from bokeh.plotting import figure, output_file, ColumnDataSource
 
 
 class valJudgement(object):
@@ -357,7 +356,7 @@ def assembleFacSumLPI(indat):
     return cds
 
 
-def makeFacSumLPI(indat, themefile, cwheel, outfile=None):
+def makeFacSumLPI(indat):
     """
     """
     #
@@ -379,14 +378,12 @@ def makeFacSumLPI(indat, themefile, cwheel, outfile=None):
         cols.append(col)
 
     # Now actually construct the table
-    output_file(outfile)
     dtab = DataTable(columns=cols, source=cds)
-    # show(widgetbox(dtab))
 
     return dtab
 
 
-def makeFacSumTCS(indat, themefile, cwheel, outfile=None):
+def makeFacSumTCS(indat):
     """
     """
     #
@@ -408,14 +405,12 @@ def makeFacSumTCS(indat, themefile, cwheel, outfile=None):
         cols.append(col)
 
     # Now actually construct the table
-    output_file(outfile)
     dtab = DataTable(columns=cols, source=cds)
-    # show(widgetbox(dtab))
 
     return dtab
 
 
-def makeWindPlots(indat, themefile, cwheel, outfile=None):
+def makeWindPlots(indat, cwheel, outfile=None):
     """
     """
 
@@ -423,7 +418,6 @@ def makeWindPlots(indat, themefile, cwheel, outfile=None):
 
     r = indat['q_wrs']
     output_file(outfile)
-    theme = Theme(filename=themefile)
 
     ldict = {'title': "WRS Wind Information",
              'xlabel': "Time (UTC)",
@@ -492,17 +486,10 @@ def makeWindPlots(indat, themefile, cwheel, outfile=None):
     ht.renderers = [htline]
     p.add_tools(ht)
 
-    # Actually apply the theme to the panel
-    # curdoc().theme = theme
-    if outfile is not None:
-        # save(p)
-        # print("Bokeh plot saved as %s" % (outfile))
-        pass
-
     return p
 
 
-def makeWeatherPlots(indat, themefile, cwheel, outfile=None):
+def makeWeatherPlots(indat, cwheel):
     """
     """
 
@@ -514,8 +501,6 @@ def makeWeatherPlots(indat, themefile, cwheel, outfile=None):
     #         ...but I can't quite figure out the abstraction well enough.
     r = indat['q_wrs']
     r2 = indat['q_mounttemp']
-    output_file(outfile)
-    theme = Theme(filename=themefile)
 
     ldict = {'title': "WRS Weather Information",
              'xlabel': "Time (UTC)",
@@ -589,12 +574,5 @@ def makeWeatherPlots(indat, themefile, cwheel, outfile=None):
     ht.line_policy = 'nearest'
     ht.renderers = [htline]
     p.add_tools(ht)
-
-    # Actually apply the theme to the panel
-    # curdoc().theme = theme
-    if outfile is not None:
-        # save(p)
-        # print("Bokeh plot saved as %s" % (outfile))
-        pass
 
     return p
