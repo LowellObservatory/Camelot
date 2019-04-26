@@ -15,20 +15,18 @@ from __future__ import division, print_function, absolute_import
 
 from collections import OrderedDict
 
-import dctplots.confHerder as ch
-import dctplots.dbQueries as dbq
-import dctplots.modulePlots as bplot
-import dctplots.colorWheelies as cwheels
-
 from bokeh.themes import Theme
-
-import bokeh.server as bs
-from tornado.ioloop import PeriodicCallback
-
 from bokeh.server.server import Server
 from bokeh.application import Application
 from bokeh.application.handlers.function import FunctionHandler
 from bokeh.plotting import figure, ColumnDataSource
+
+from tornado.ioloop import PeriodicCallback
+
+import dctplots.confHerder as ch
+import dctplots.dbQueries as dbq
+import dctplots.modulePlots as bplot
+import dctplots.colorWheelies as cwheels
 
 
 #
@@ -129,7 +127,7 @@ def make_dctweather(doc):
         print("FATAL ERROR: Module %s not found!" % (m.pymodule))
 
     outfile = m.outname
-    fig = thingLonger(pdata, themefile, dset, outfile=outfile)
+    fig = thingLonger(pdata, dset)
 
     doc.theme = theme
     doc.title = m.title
