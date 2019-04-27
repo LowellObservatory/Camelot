@@ -23,7 +23,7 @@ class moduleConfig():
         self.queries = None
         self.drange = 1
         self.pymodule = None
-        self.outname = None
+        self.endpoint = None
         self.enabled = False
 
     def combineConfs(self, queries):
@@ -65,6 +65,14 @@ class databaseQuery():
 
 
 def assignConf(obj, conf):
+    """
+    Given an arbitrary class and a parsed configuration file, assign keys
+    from the latter into parameters in the former.
+
+    Assumes that ALL keys in the class are present in the configuration; if
+    they aren't, then they're set to ```None``` and caught/announced in the
+    ```KeyError``` exception below.
+    """
     for key in obj.__dict__:
         try:
             kval = conf[key]
@@ -142,6 +150,8 @@ def alignDBConfig(queries):
             dbs.update({sec: idb})
         elif sec.lower() != 'default':
             dbq = assignConf(databaseQuery(), queries[sec])
+            # Setting this outside of __init__ is fine with me
+            #   since we're really just renaming for convienence elsewhere
             dbq.key = sec
             try:
                 dbkey = queries[sec]['db']
