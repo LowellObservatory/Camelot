@@ -13,13 +13,20 @@
 
 from __future__ import division, print_function, absolute_import
 
+import datetime as dt
 from collections import OrderedDict
+
+import pandas as pd
+from pytz import timezone
 
 from bokeh.themes import Theme
 from bokeh.server.server import Server
 from bokeh.application import Application
 from bokeh.application.handlers.function import FunctionHandler
-from bokeh.plotting import figure, ColumnDataSource
+from bokeh.plotting import ColumnDataSource
+from bokeh.models import Range1d, LinearAxis, \
+                         HoverTool, Legend, LegendItem, \
+                         DataTable, TableColumn
 
 from tornado.ioloop import PeriodicCallback
 
@@ -50,6 +57,10 @@ dset, _ = cwheels.getColors()
 # Raw query result dict
 qdata = OrderedDict()
 
+# CDS Sources; easier to keep them globals for now since I'm going down
+#   the path (to madness?) of inner functions
+cds = ColumnDataSource()
+
 
 def batchQuery():
     """
@@ -75,30 +86,7 @@ def batchQuery():
 
     print("%d queries complete!" % (len(qdata)))
 
-    #source.stream() specific data to every plot endpoint now?
-    #  ... might work ...
     return qdata
-
-    # Cycle thru each module and generate it
-    # for m in mods:
-    #     print(m.title)
-    #     # Gather up the query data into a single dict so we don't
-    #     #   have to encode absolutely everything in every single plot/page
-    #     pdata = OrderedDict()
-    #     for qtag in m.queries.keys():
-    #         pdata.update({qtag: qdata[qtag]})
-
-    #     # A neat party trick:
-    #     #   Grab the actual function reference by getting the named
-    #     #   attribute of an import (bplot). Then we can call
-    #     #   'thingLonger' with the args to actually do it.
-    #     try:
-    #         thingLonger = getattr(bplot, m.pymodule)
-    #     except AttributeError:
-    #         print("FATAL ERROR: Module %s not found!" % (m.pymodule))
-
-    #     outfile = m.outname
-    #     thingLonger(pdata, themefile, dset, outfile=outfile)
 
 
 def make_dctweather(doc):
@@ -110,40 +98,180 @@ def make_dctweather(doc):
     #   ... no, I'm not happy about this either.  This is pretty fugly.
     m = mods[0]
 
-    print(m.title)
+    print("Serving %s" % (m.title))
     # Gather up the query data into a single dict so we don't
     #   have to encode absolutely everything in every single plot/page
     pdata = OrderedDict()
     for qtag in m.queries.keys():
         pdata.update({qtag: qdata[qtag]})
 
-    # A neat party trick:
-    #   Grab the actual function reference by getting the named
-    #   attribute of an import (bplot). Then we can call
-    #   'thingLonger' with the args to actually do it.
-    try:
-        thingLonger = getattr(bplot, m.pymodule)
-    except AttributeError:
-        print("FATAL ERROR: Module %s not found!" % (m.pymodule))
+    # Setting y1lim to None lets it autoscale based on the data;
+    #   Seemed best to keep humidity as 0-100 though.
+    y1lim = None
+    y2lim = [0, 100]
 
-    outfile = m.outname
-    fig = thingLonger(pdata, dset)
+    # Get the keys that define the input dataset
+    #   TODO: make the first defined tag the "primary" meaning X1/Y1 plot
+    #         ...but I can't quite figure out the abstraction well enough.
+    r = pdata['q_wrs']
+    r2 = pdata['q_mounttemp']
+
+    # A dict of helpful plot labels
+    ldict = {'title': "WRS Weather Information",
+             'xlabel': "Time (UTC)",
+             'y1label': "Temperature (C)",
+             'y2label': "Humidity (%)"}
+
+    fig = bplot.commonPlot(r, ldict)
+    timeNow = dt.datetime.utcnow()
+    tWindow = dt.timedelta(hours=24)
+    tEndPad = dt.timedelta(hours=1.5)
+
+    # Remember that .min and .max are methods! Need the ()
+    #   Also adjust plot extents to pad +/- N percent
+    npad = 0.1
+    if y1lim is None:
+        # Not a typo; make sure that the dewpoint values are always included
+        y1lim = [r.DewPoint.values.min(), r.AirTemp.values.max()]
+        y1lim = [y1lim[0]*(1.-npad), y1lim[1]*(1.+npad)]
+
+    if y2lim is None:
+        # Remember that .min and .max are methods! Need the ()
+        y2lim = [r.Humidity.values.min(), r.Humidity.values.max()]
+        y2lim = [y2lim[0]*(1.-npad), y2lim[1]*(1.+npad)]
+
+    fig.y_range = Range1d(start=y1lim[0], end=y1lim[1])
+    fig.x_range = Range1d(start=timeNow-tWindow, end=timeNow+tEndPad)
+
+    fig.extra_y_ranges = {"y2": Range1d(start=y2lim[0], end=y2lim[1])}
+    fig.add_layout(LinearAxis(y_range_name="y2",
+                              axis_label=ldict['y2label']), 'right')
+
+    # Hack! But it works. Need to do this *before* you create cds below!
+    ix, iy = bplot.makePatches(r, y1lim)
+
+    # The "master" data source to be used for plotting.
+    #    I wish there was a way of abstracting this but I'm not
+    #    clever enough. Make the dict in a loop using
+    #    the data keys? I dunno. "Future Work" for sure.
+    mds = dict(index=r.index, AirTemp=r.AirTemp, Humidity=r.Humidity,
+               DewPoint=r.DewPoint, MountTemp=r2.MountTemp,
+               ix=ix, iy=iy)
+    cds = ColumnDataSource(mds)
+
+    # Make the plots/lines!
+    l1, _ = bplot.plotLineWithPoints(fig, cds, "AirTemp", dset[0])
+    l2, _ = bplot.plotLineWithPoints(fig, cds, "DewPoint", dset[1])
+    l3, _ = bplot.plotLineWithPoints(fig, cds, "Humidity", dset[2], yrname="y2")
+    l4, _ = bplot.plotLineWithPoints(fig, cds, "MountTemp", dset[3])
+
+    li1 = LegendItem(label="AirTemp", renderers=[l1])
+    li2 = LegendItem(label="DewPoint", renderers=[l2])
+    li3 = LegendItem(label="Humidity", renderers=[l3])
+    li4 = LegendItem(label="MountTemp", renderers=[l4])
+    legend = Legend(items=[li1, li2, li3, li4], location='top_left',
+                    orientation='horizontal', spacing=15)
+    fig.add_layout(legend)
+
+    # HACK HACK HACK HACK HACK
+    #   Apply the patches to carry the tooltips
+    simg = fig.patches('ix', 'iy', source=cds,
+                       fill_color=None,
+                       fill_alpha=0.0,
+                       line_color=None)
+
+    # Make the hovertool only follow the patches (still a hack)
+    htline = simg
+
+    # Customize the active tools
+    fig.toolbar.autohide = True
+
+    ht = HoverTool()
+    ht.tooltips = [("Time", "@index{%F %T}"),
+                   ("AirTemp", "@AirTemp{0.0} C"),
+                   ("MountTemp", "@MountTemp{0.0} C"),
+                   ("Humidity", "@Humidity %"),
+                   ("DewPoint", "@DewPoint{0.0} C"),
+                   ]
+    ht.formatters = {'index': 'datetime'}
+    ht.show_arrow = False
+    ht.point_policy = 'follow_mouse'
+    ht.line_policy = 'nearest'
+    ht.renderers = [htline]
+    fig.add_tools(ht)
+
+    #####
 
     doc.theme = theme
     doc.title = m.title
     doc.add_root(fig)
 
     def grabNew():
+        print("Updating data references!")
+
+        # Get the last timestamp present in the existing ColumnDataSource
+        lastTime = cds.data['index'].max()
+
+        # Grab the newest data from the master query dictionary
         pdata = OrderedDict()
         for qtag in m.queries.keys():
             pdata.update({qtag: qdata[qtag]})
 
-        print("Data reference updated")
+        # Update the data references; these are actual DataFrame objects btw.
+        r = pdata['q_wrs']
+        r2 = pdata['q_mounttemp']
 
-    doc.add_periodic_callback(grabNew, 30000)
+        # Divide by 1000 since it's actually nanoseconds since epoch
+        lastTimedt = dt.datetime.fromtimestamp(lastTime/1000.)
+
+        # Need to specifically add the tz info, so it can be compared
+        #   the tz-aware objects in the DataFrames
+
+        # BAH. I forgot I gave up on timestamps a while ago, so I've been
+        #   accidentally storing everything in LOCAL times and depending on
+        #   Grafana to translate correctly.  Whoopsie.
+
+        # At this point, it's easier to just strip out the tz info
+        r.index = r.index.tz_localize(tz=None)
+        r2.index = r2.index.tz_localize(tz=None)
+
+        storageTZ = timezone('America/Phoenix')
+        lastTimedt = lastTimedt.replace(tzinfo=None)
+
+        print("Selecting only data found since %s" % (lastTimedt.isoformat()))
+
+        # Now select only the data in those frames since lastTime
+        rf = r[r.index >= lastTimedt]
+        rf2 = r2[r2.index >= lastTimedt]
+
+        if rf.size == 0:
+            print("No new data! Skipping....")
+            return
+        else:
+            # Update the new hack patches, too
+            nix, niy = bplot.makePatches(rf, y1lim)
+
+            # NOTE: y1lim should already have been set by this point since
+            #   the callback is called *after* the plot has already initialized
+            # ix, iy = bplot.makePatches(r, y1lim)
+            mds = dict(index=rf.index, AirTemp=rf.AirTemp, Humidity=rf.Humidity,
+                    DewPoint=rf.DewPoint, MountTemp=rf2.MountTemp,
+                    ix=nix, iy=niy)
+
+            # Actually update the cds in the plot.
+            #   Note that .stream expects a dict, whose keys match those in the
+            #   existing ColumnDataSource.
+            # If you forget, you'll keep getting an 'AttributeError' because
+            #   ColumnDataSource has no 'keys' attribute!
+            cds.stream(mds, rollover=5000)
+            print("Data reference updated")
+
+    doc.add_periodic_callback(grabNew, 5000)
 
 
 if __name__ == "__main__":
+    # LOOP OVER THE CONFIG TO MAKE THIS; NEED INTERMEDIATE FUNCTIONS FOR
+    #   ACTUALLY MAKING THE PLOTS LIKE "make_dctweather" !
     apps = {'/dctweather': Application(FunctionHandler(make_dctweather))}
 
     print("Starting bokeh server...")
@@ -153,6 +281,9 @@ if __name__ == "__main__":
     #   we start so we have some data to work with initially
     qdata = batchQuery()
 
+    # jitter=0.1 means the callback will be called at intervals +/- 10%
+    #   to avoid constant clashes with other periodic processes that may be
+    #   present and running on the server.
     pcallback = PeriodicCallback(batchQuery, 60000, jitter=0.1)
     pcallback.start()
 
