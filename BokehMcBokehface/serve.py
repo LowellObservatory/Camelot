@@ -133,7 +133,11 @@ def make_dctweather(doc):
     if y1lim is None:
         # Not a typo; make sure that the dewpoint values are always included
         y1lim = [r.DewPoint.values.min(), r.AirTemp.values.max()]
-        y1lim = [y1lim[0]*(1.-npad), y1lim[1]*(1.+npad)]
+
+        # Check for a negative limit on the lower end
+        if y1lim[0] < 0:
+            nnpad = npad * -1
+        y1lim = [y1lim[0]*(1.-nnpad), y1lim[1]*(1.+nnpad)]
 
     if y2lim is None:
         # Remember that .min and .max are methods! Need the ()
@@ -254,9 +258,11 @@ def make_dctweather(doc):
             # NOTE: y1lim should already have been set by this point since
             #   the callback is called *after* the plot has already initialized
             # ix, iy = bplot.makePatches(r, y1lim)
-            mds = dict(index=rf.index, AirTemp=rf.AirTemp, Humidity=rf.Humidity,
-                    DewPoint=rf.DewPoint, MountTemp=rf2.MountTemp,
-                    ix=nix, iy=niy)
+            mds = dict(index=rf.index, AirTemp=rf.AirTemp,
+                       Humidity=rf.Humidity,
+                       DewPoint=rf.DewPoint,
+                       MountTemp=rf2.MountTemp,
+                       ix=nix, iy=niy)
 
             # Actually update the cds in the plot.
             #   Note that .stream expects a dict, whose keys match those in the
