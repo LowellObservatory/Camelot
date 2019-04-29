@@ -226,27 +226,23 @@ def make_dctweather(doc):
         r2 = pdata['q_mounttemp']
 
         # Divide by 1000 since it's actually nanoseconds since epoch
-        lastTimedt = dt.datetime.fromtimestamp(lastTime/1000.)
+        lastTimedt = dt.datetime.utcfromtimestamp(lastTime/1000.)
 
-        # Need to specifically add the tz info, so it can be compared
-        #   the tz-aware objects in the DataFrames
-
-        # BAH. I forgot I gave up on timestamps a while ago, so I've been
-        #   accidentally storing everything in LOCAL times and depending on
-        #   Grafana to translate correctly.  Whoopsie.
-
-        # At this point, it's easier to just strip out the tz info
-        r.index = r.index.tz_localize(tz=None)
-        r2.index = r2.index.tz_localize(tz=None)
-
-        storageTZ = timezone('America/Phoenix')
-        lastTimedt = lastTimedt.replace(tzinfo=None)
+        # The server timezone has been set (during its setup) to UTC;
+        #   we need to specifically add that to avoid timezone shenanigans
+        #   because in a prior life we were bad and now must be punished
+        storageTZ = timezone('UTC')
+        lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
 
         print("Selecting only data found since %s" % (lastTimedt.isoformat()))
 
         # Now select only the data in those frames since lastTime
-        rf = r[r.index >= lastTimedt]
-        rf2 = r2[r2.index >= lastTimedt]
+        #   But! Of course there's another caveat.
+        # lastTimedt is dt.datetime object, but r.index has a type of
+        #   Timestamp which is really a np.datetime64 wrapper. So we need
+        #   to put them on the same page for actual comparisons.
+        rf = r[r.index.to_pydatetime() > lastTimedt]
+        rf2 = r2[r2.index.to_pydatetime() > lastTimedt]
 
         if rf.size == 0:
             print("No new data! Skipping....")
