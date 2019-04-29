@@ -132,12 +132,19 @@ def make_dctweather(doc):
     npad = 0.1
     if y1lim is None:
         # Not a typo; make sure that the dewpoint values are always included
+        #   since they're always the lowest (and sometimes negative)
         y1lim = [r.DewPoint.values.min(), r.AirTemp.values.max()]
 
-        # Check for a negative limit on the lower end
+        # Now pad them appropriately, checking for a negative limit
         if y1lim[0] < 0:
-            nnpad = npad * -1
-        y1lim = [y1lim[0]*(1.-nnpad), y1lim[1]*(1.+nnpad)]
+            y1lim[0] *= (1.+npad)
+        else:
+            y1lim[0] *= (1.-npad)
+
+        if y1lim[1] < 0:
+            y1lim[1] *= (1.-npad)
+        else:
+            y1lim[1] *= (1.+npad)
 
     if y2lim is None:
         # Remember that .min and .max are methods! Need the ()
