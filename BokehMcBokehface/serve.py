@@ -180,8 +180,8 @@ def make_dctweather(doc):
     li2 = LegendItem(label="DewPoint", renderers=[l2])
     li3 = LegendItem(label="Humidity", renderers=[l3])
     li4 = LegendItem(label="MountTemp", renderers=[l4])
-    legend = Legend(items=[li1, li2, li3, li4], location='top_left',
-                    orientation='horizontal', spacing=15)
+    legend = Legend(items=[li1, li2, li3, li4],
+                    orientation='vertical', spacing=15)
     fig.add_layout(legend)
 
     # HACK HACK HACK HACK HACK
