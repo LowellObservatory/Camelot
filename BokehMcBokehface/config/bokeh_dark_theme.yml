@@ -24,6 +24,8 @@ attrs:
         border_line_color: '#2f2f32'
         label_text_color: '#d8d9da'
         click_policy: 'hide'
+        inactive_fill_alpha: 0.8
+        inactive_fill_color: '#2f2f32'
     CrosshairTool:
         dimensions: 'height'
         line_color: '#E24D42'
