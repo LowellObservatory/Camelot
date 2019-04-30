@@ -218,7 +218,8 @@ def make_dctweather(doc):
     doc.add_root(fig)
 
     def grabNew():
-        print("Updating data references!")
+        timeUpdate = dt.datetime.utcnow()
+        print("Checking for new data!")
 
         # Get the last timestamp present in the existing ColumnDataSource
         lastTime = cds.data['index'].max()
@@ -252,8 +253,7 @@ def make_dctweather(doc):
         rf2 = r2[r2.index.to_pydatetime() > lastTimedt]
 
         if rf.size == 0:
-            print("No new data! Skipping....")
-            return
+            print("No new data.")
         else:
             # Update the new hack patches, too
             nix, niy = bplot.makePatches(rf, y1lim)
@@ -273,7 +273,15 @@ def make_dctweather(doc):
             # If you forget, you'll keep getting an 'AttributeError' because
             #   ColumnDataSource has no 'keys' attribute!
             cds.stream(mds, rollover=5000)
-            print("Data reference updated")
+            print("Data references updated.")
+
+        # Update the X range, at least, to show that we're still moving
+        print("Adjusted plot x-range.")
+        fig.x_range = Range1d(start=timeUpdate-tWindow,
+                              end=timeUpdate+tEndPad)
+        print("")
+
+
 
     doc.add_periodic_callback(grabNew, 5000)
 

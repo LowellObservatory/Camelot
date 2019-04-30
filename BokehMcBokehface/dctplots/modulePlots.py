@@ -169,8 +169,8 @@ def makePatches(r, y1lim):
 
     # ColumnDataSource needs everything to have the same length. The last point
     #   might get two tooltips, but I don't care for now.
-    ix.append(ix[-1])
-    iy.append(iy[-1])
+    # ix.append(ix[-1])
+    # iy.append(iy[-1])
 
     return ix, iy
 
