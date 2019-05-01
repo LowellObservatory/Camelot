@@ -16,6 +16,7 @@ from __future__ import division, print_function, absolute_import
 import datetime as dt
 from collections import OrderedDict
 
+import numpy as np
 import pandas as pd
 from pytz import timezone
 
@@ -113,8 +114,16 @@ def make_dctweather(doc):
     # Get the keys that define the input dataset
     #   TODO: make the first defined tag the "primary" meaning X1/Y1 plot
     #         ...but I can't quite figure out the abstraction well enough.
-    r = pdata['q_wrs']
+    r = pdata['q_Rywrs']
     r2 = pdata['q_mounttemp']
+
+    # Join them so the timestamps are sorted for us nicely, and nan's
+    #   put into the gaps so we don't get all confused later on
+    r = r.join(r2, how='outer')
+
+    # Change F -> C because we're scientists god dammit
+    r.AirTemp = (r.AirTemp - 32.) * (5./9.)
+    r.DewPoint = (r.DewPoint - 32.) * (5./9.)
 
     # A dict of helpful plot labels
     ldict = {'title': "WRS Weather Information",
@@ -133,7 +142,8 @@ def make_dctweather(doc):
     if y1lim is None:
         # Not a typo; make sure that the dewpoint values are always included
         #   since they're always the lowest (and sometimes negative)
-        y1lim = [r.DewPoint.values.min(), r.AirTemp.values.max()]
+        y1lim = [r.DewPoint.min(skipna=True),
+                 r.AirTemp.max(skipna=True)]
 
         # Now pad them appropriately, checking for a negative limit
         if y1lim[0] < 0:
@@ -148,7 +158,8 @@ def make_dctweather(doc):
 
     if y2lim is None:
         # Remember that .min and .max are methods! Need the ()
-        y2lim = [r.Humidity.values.min(), r.Humidity.values.max()]
+        y2lim = [r.Humidity.min(skipna=True),
+                 r.Humidity.max(skipna=True)]
         y2lim = [y2lim[0]*(1.-npad), y2lim[1]*(1.+npad)]
 
     fig.y_range = Range1d(start=y1lim[0], end=y1lim[1])
@@ -166,8 +177,8 @@ def make_dctweather(doc):
     #    clever enough. Make the dict in a loop using
     #    the data keys? I dunno. "Future Work" for sure.
     mds = dict(index=r.index, AirTemp=r.AirTemp, Humidity=r.Humidity,
-               DewPoint=r.DewPoint, MountTemp=r2.MountTemp,
-               ix=ix, iy=iy)
+               DewPoint=r.DewPoint, MountTemp=r.MountTemp)
+            #    ix=ix, iy=iy)
     cds = ColumnDataSource(mds)
 
     # Make the plots/lines!
@@ -181,35 +192,37 @@ def make_dctweather(doc):
     li3 = LegendItem(label="Humidity", renderers=[l3])
     li4 = LegendItem(label="MountTemp", renderers=[l4])
     legend = Legend(items=[li1, li2, li3, li4],
+                    location="top_left",
                     orientation='vertical', spacing=15)
     fig.add_layout(legend)
-
-    # HACK HACK HACK HACK HACK
-    #   Apply the patches to carry the tooltips
-    simg = fig.patches('ix', 'iy', source=cds,
-                       fill_color=None,
-                       fill_alpha=0.0,
-                       line_color=None)
-
-    # Make the hovertool only follow the patches (still a hack)
-    htline = simg
 
     # Customize the active tools
     fig.toolbar.autohide = True
 
-    ht = HoverTool()
-    ht.tooltips = [("Time", "@index{%F %T}"),
-                   ("AirTemp", "@AirTemp{0.0} C"),
-                   ("MountTemp", "@MountTemp{0.0} C"),
-                   ("Humidity", "@Humidity %"),
-                   ("DewPoint", "@DewPoint{0.0} C"),
-                   ]
-    ht.formatters = {'index': 'datetime'}
-    ht.show_arrow = False
-    ht.point_policy = 'follow_mouse'
-    ht.line_policy = 'nearest'
-    ht.renderers = [htline]
-    fig.add_tools(ht)
+    # # HACK HACK HACK HACK HACK
+    # #   Apply the patches to carry the tooltips
+    # simg = fig.patches('ix', 'iy', source=cds,
+    #                    fill_color=None,
+    #                    fill_alpha=0.0,
+    #                    line_color=None)
+
+    # # Make the hovertool only follow the patches (still a hack)
+    # htline = simg
+
+
+    # ht = HoverTool()
+    # ht.tooltips = [("Time", "@index{%F %T}"),
+    #                ("AirTemp", "@AirTemp{0.0} C"),
+    #                ("MountTemp", "@MountTemp{0.0} C"),
+    #                ("Humidity", "@Humidity %"),
+    #                ("DewPoint", "@DewPoint{0.0} C"),
+    #                ]
+    # ht.formatters = {'index': 'datetime'}
+    # ht.show_arrow = False
+    # ht.point_policy = 'follow_mouse'
+    # ht.line_policy = 'nearest'
+    # ht.renderers = [htline]
+    # fig.add_tools(ht)
 
     #####
 
@@ -230,7 +243,7 @@ def make_dctweather(doc):
             pdata.update({qtag: qdata[qtag]})
 
         # Update the data references; these are actual DataFrame objects btw.
-        r = pdata['q_wrs']
+        r = pdata['q_Rywrs']
         r2 = pdata['q_mounttemp']
 
         # Divide by 1000 since it's actually nanoseconds since epoch
@@ -252,27 +265,44 @@ def make_dctweather(doc):
         rf = r[r.index.to_pydatetime() > lastTimedt]
         rf2 = r2[r2.index.to_pydatetime() > lastTimedt]
 
-        if rf.size == 0:
+        if rf.size == 0 and rf2.size == 0:
             print("No new data.")
         else:
+            # Prune out stuff we don't want/care about anymore.
+            #   If there are columns that end up in 'nf' below that aren't
+            #   already in the main CDS, Bokeh will barf/the plot won't update.
+            rf = rf.drop("WindDir2MinAvg", axis=1)
+            rf = rf.drop("WindSpeed2MinAvg", axis=1)
+
+            rf.AirTemp = (rf.AirTemp - 32.) * (5./9.)
+            rf.DewPoint = (rf.DewPoint - 32.) * (5./9.)
+
+            # Now join the dataframes into one single one that we can stream.
+            #   Remember to use 'outer' otherwise information will be
+            #   mutilated since the two dataframes are on two different
+            #   time indicies!
+            nf = rf.join(rf2, how='outer')
+
             # Update the new hack patches, too
             nix, niy = bplot.makePatches(rf, y1lim)
 
             # NOTE: y1lim should already have been set by this point since
             #   the callback is called *after* the plot has already initialized
             # ix, iy = bplot.makePatches(r, y1lim)
-            mds = dict(index=rf.index, AirTemp=rf.AirTemp,
-                       Humidity=rf.Humidity,
-                       DewPoint=rf.DewPoint,
-                       MountTemp=rf2.MountTemp,
-                       ix=nix, iy=niy)
+            # mds = dict(index=rf.index, AirTemp=rf.AirTemp,
+            #            Humidity=rf.Humidity,
+            #            DewPoint=rf.DewPoint,
+            #            MountTemp=rf2.MountTemp,
+            #            ix=nix, iy=niy)
 
             # Actually update the cds in the plot.
             #   Note that .stream expects a dict, whose keys match those in the
             #   existing ColumnDataSource.
             # If you forget, you'll keep getting an 'AttributeError' because
             #   ColumnDataSource has no 'keys' attribute!
-            cds.stream(mds, rollover=5000)
+            # cds.stream(mds, rollover=5000)
+            cds.stream(nf, rollover=5000)
+            print(cds.data['MountTemp'][-10:])
             print("Data references updated.")
 
         # Update the X range, at least, to show that we're still moving
@@ -280,8 +310,6 @@ def make_dctweather(doc):
         fig.x_range = Range1d(start=timeUpdate-tWindow,
                               end=timeUpdate+tEndPad)
         print("")
-
-
 
     doc.add_periodic_callback(grabNew, 5000)
 
