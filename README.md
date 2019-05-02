@@ -5,6 +5,12 @@
 
 Repository for one offs and toy models to explore random topics.
 
+## BokehMcBokehface
+
+Prototype for figuring out the details of using bokeh server to query a database periodically
+and stream updates/new data to the plot without having to force a full refresh, to be integrated
+into the NightWatch project to visualize DCT data.
+
 ## CentroidMcCentroidface
 
 Created to quickly assess centroid/tracking quality for the Lowell 31" at Anderson Mesa.
