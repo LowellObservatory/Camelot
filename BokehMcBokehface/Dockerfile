@@ -2,6 +2,8 @@
 #   as required for the DCTStack/DataServants
 FROM pytest
 
+RUN pip install bokeh
+
 USER lig:lig
 WORKDIR /home/lig/Codes/
 COPY --chown=lig:lig . ./BokehMcBokehface/
