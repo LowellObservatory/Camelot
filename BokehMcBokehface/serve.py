@@ -248,7 +248,7 @@ def make_dctweather(doc):
         # NOTE: This is probably not necessary anymore, and all the timestamp
         #   logic can probably be overhauled and simplified since bokeh 1.1.0
         #   seems to be smarter about this sort of thing.
-        lastTimedt = lastTime.to_pydatetime()
+        lastTimedt = lastTime
 
         # The server timezone has been set (during its setup) to UTC;
         #   we need to specifically add that to avoid timezone shenanigans
