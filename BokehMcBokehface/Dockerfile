@@ -2,6 +2,7 @@
 #   as required for the DCTStack/DataServants
 FROM pytest
 
+USER root:root
 RUN pip install bokeh
 
 USER lig:lig
@@ -12,4 +13,4 @@ RUN mkdir BokehMcBokehface/logs
 # Default command to issue when starting this image in a container
 USER lig
 WORKDIR /home/lig/Codes/BokehMcBokehface/
-CMD ["python bokeh_looper.py"]
+CMD ["python serve.py"]
