@@ -244,13 +244,17 @@ def make_dctweather(doc):
         r2 = pdata['q_mounttemp']
 
         # Divide by 1000 since it's actually nanoseconds since epoch
-        lastTimedt = dt.datetime.utcfromtimestamp(lastTime/1000.)
+        # lastTimedt = dt.datetime.utcfromtimestamp(lastTime/1000.)
+        # NOTE: This is probably not necessary anymore, and all the timestamp
+        #   logic can probably be overhauled and simplified since bokeh 1.1.0
+        #   seems to be smarter about this sort of thing.
+        lastTimedt = lastTime.to_pydatetime()
 
         # The server timezone has been set (during its setup) to UTC;
         #   we need to specifically add that to avoid timezone shenanigans
         #   because in a prior life we were bad and now must be punished
-        storageTZ = timezone('UTC')
-        lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
+        # storageTZ = timezone('UTC')
+        # lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
 
         print("Selecting only data found since %s" % (lastTimedt.isoformat()))
 
