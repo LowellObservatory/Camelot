@@ -36,8 +36,7 @@ def queryConstructor(dbinfo, dtime=48, debug=False):
             dtime = 1
 
     if dbinfo.db.type.lower() == 'influxdb':
-        print("Constructing influxdb query...")
-        if debug is False:
+        if debug is True:
             print("Searching for %s in %s.%s on %s:%s" % (dbinfo.fn,
                                                           dbinfo.db.tabl,
                                                           dbinfo.mn,
@@ -54,7 +53,6 @@ def queryConstructor(dbinfo, dtime=48, debug=False):
         # TODO: Someone should write a query validator to make sure
         #   this can't run amok.  For now, make sure the user has
         #   only READ ONLY privileges to the database in question!!!
-        print("")
         query = 'SELECT'
         if isinstance(dbinfo.fn, list):
             for i, each in enumerate(dbinfo.fn):
@@ -100,8 +98,6 @@ def getResultsDataFrame(host, querystr, port=8086,
     Attempts to distinguish queries that have results grouped by a tag
     vs. those which are just of multiple fields. May be buggy still.
     """
-    print(querystr)
-
     idfc = DataFrameClient(host, port, dbuser, dbpass, dbname)
 
     results = idfc.query(querystr)
