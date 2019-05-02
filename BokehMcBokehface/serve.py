@@ -57,10 +57,6 @@ dset, _ = cwheels.getColors()
 # Raw query result dict
 qdata = OrderedDict()
 
-# CDS Sources; easier to keep them globals for now since I'm going down
-#   the path (to madness?) of inner functions
-# cds = ColumnDataSource()
-
 
 def batchQuery():
     """
