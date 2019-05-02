@@ -322,7 +322,9 @@ if __name__ == "__main__":
     apps = {'/dctweather': Application(FunctionHandler(make_dctweather))}
 
     print("Starting bokeh server...")
-    server = Server(apps, port=5000)
+    server = Server(apps, port=5000,
+                    allow_websocket_origin=['localhost',
+                                            'dctsleeperservice'])
 
     # Do this as a periodic callback?  Need to do it at least once before
     #   we start so we have some data to work with initially
