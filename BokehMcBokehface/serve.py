@@ -116,8 +116,6 @@ def make_dctweather(doc):
     #   put into the gaps so we don't get all confused later on
     r = r.join(r2, how='outer')
 
-    r.fillna(method='ffill', inplace=True)
-
     # Change F -> C because we're scientists god dammit
     r.AirTemp = (r.AirTemp - 32.) * (5./9.)
     r.DewPoint = (r.DewPoint - 32.) * (5./9.)
@@ -165,6 +163,9 @@ def make_dctweather(doc):
     fig.extra_y_ranges = {"y2": Range1d(start=y2lim[0], end=y2lim[1])}
     fig.add_layout(LinearAxis(y_range_name="y2",
                               axis_label=ldict['y2label']), 'right')
+
+    # Make sure that we don't have too awkward of a dataframe by filling gaps
+    r.fillna(method='ffill', inplace=True)
 
     # Hack! But it works. Need to do this *before* you create cds below!
     ix, iy = bplot.makePatches(r.index, y1lim)
@@ -278,7 +279,6 @@ def make_dctweather(doc):
             #   mutilated since the two dataframes are on two different
             #   time indicies!
             nf = rf.join(rf2, how='outer')
-            nf.fillna(method='ffill', inplace=True)
 
             # Update the new hack patches, too. Special handling for the case
             #   where we just have one new point in time, since
@@ -288,16 +288,19 @@ def make_dctweather(doc):
             #   correct.  But, that's a little too complicated for right now.
             numRows = nf.shape[0]
             if numRows == 1:
+                print("Single row!")
                 nidx = [lastTimedt, nf.index[-1]]
                 nix, niy = bplot.makePatches(nidx, y1lim)
                 ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
                                    index=[nf.index[-1]])
             else:
+                print("Multirow!")
                 nix, niy = bplot.makePatches(nf.index, y1lim)
                 ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
                                    index=nf.index)
 
             nf = nf.join(ndf, how='outer')
+            # nf.fillna(method='ffill', inplace=True)
 
             # Actually update the cds in the plot.
             #   We can just stream a DataFrame! Makes life easy.
