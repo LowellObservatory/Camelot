@@ -324,7 +324,7 @@ if __name__ == "__main__":
     print("Starting bokeh server...")
     server = Server(apps, port=5000,
                     allow_websocket_origin=['localhost',
-                                            'dctsleeperservice'])
+                                            'dctsleeperservice:5000'])
 
     # Do this as a periodic callback?  Need to do it at least once before
     #   we start so we have some data to work with initially
