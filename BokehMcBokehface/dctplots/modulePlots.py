@@ -151,9 +151,9 @@ def commonPlot(r, ldict):
     return p
 
 
-def makePatches(r, y1lim):
+def makePatches(xindex, y1lim):
     """
-    THIS IS a HACK!
+    This is a bit of a HACK!  It might be a little screwy at the edges.
 
     It gives way better tooltips on a timeseries plot.  It works by
     turning the indicies into a list of lists of x coordinates and
@@ -162,9 +162,9 @@ def makePatches(r, y1lim):
     """
     ix = []
     iy = []
-    for i, _ in enumerate(r.index):
+    for i, _ in enumerate(xindex):
         if i > 0:
-            ix.append([r.index[i-1], r.index[i], r.index[i], r.index[i-1]])
+            ix.append([xindex[i-1], xindex[i], xindex[i], xindex[i-1]])
             iy.append([y1lim[0], y1lim[0], y1lim[1], y1lim[1]])
 
     # ColumnDataSource needs everything to have the same length. The last point

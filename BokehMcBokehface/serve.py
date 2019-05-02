@@ -16,7 +16,6 @@ from __future__ import division, print_function, absolute_import
 import datetime as dt
 from collections import OrderedDict
 
-import numpy as np
 import pandas as pd
 from pytz import timezone
 
@@ -60,7 +59,7 @@ qdata = OrderedDict()
 
 # CDS Sources; easier to keep them globals for now since I'm going down
 #   the path (to madness?) of inner functions
-cds = ColumnDataSource()
+# cds = ColumnDataSource()
 
 
 def batchQuery():
@@ -133,7 +132,7 @@ def make_dctweather(doc):
 
     fig = bplot.commonPlot(r, ldict)
     timeNow = dt.datetime.utcnow()
-    tWindow = dt.timedelta(hours=24)
+    tWindow = dt.timedelta(hours=13)
     tEndPad = dt.timedelta(hours=1.5)
 
     # Remember that .min and .max are methods! Need the ()
@@ -170,15 +169,15 @@ def make_dctweather(doc):
                               axis_label=ldict['y2label']), 'right')
 
     # Hack! But it works. Need to do this *before* you create cds below!
-    ix, iy = bplot.makePatches(r, y1lim)
+    ix, iy = bplot.makePatches(r.index, y1lim)
 
     # The "master" data source to be used for plotting.
     #    I wish there was a way of abstracting this but I'm not
     #    clever enough. Make the dict in a loop using
     #    the data keys? I dunno. "Future Work" for sure.
     mds = dict(index=r.index, AirTemp=r.AirTemp, Humidity=r.Humidity,
-               DewPoint=r.DewPoint, MountTemp=r.MountTemp)
-            #    ix=ix, iy=iy)
+               DewPoint=r.DewPoint, MountTemp=r.MountTemp,
+               ix=ix, iy=iy)
     cds = ColumnDataSource(mds)
 
     # Make the plots/lines!
@@ -201,28 +200,27 @@ def make_dctweather(doc):
 
     # # HACK HACK HACK HACK HACK
     # #   Apply the patches to carry the tooltips
-    # simg = fig.patches('ix', 'iy', source=cds,
-    #                    fill_color=None,
-    #                    fill_alpha=0.0,
-    #                    line_color=None)
+    simg = fig.patches('ix', 'iy', source=cds,
+                       fill_color=None,
+                       fill_alpha=0.0,
+                       line_color=None)
 
-    # # Make the hovertool only follow the patches (still a hack)
-    # htline = simg
+    # Make the hovertool only follow the patches (still a hack)
+    htline = simg
 
-
-    # ht = HoverTool()
-    # ht.tooltips = [("Time", "@index{%F %T}"),
-    #                ("AirTemp", "@AirTemp{0.0} C"),
-    #                ("MountTemp", "@MountTemp{0.0} C"),
-    #                ("Humidity", "@Humidity %"),
-    #                ("DewPoint", "@DewPoint{0.0} C"),
-    #                ]
-    # ht.formatters = {'index': 'datetime'}
-    # ht.show_arrow = False
-    # ht.point_policy = 'follow_mouse'
-    # ht.line_policy = 'nearest'
-    # ht.renderers = [htline]
-    # fig.add_tools(ht)
+    ht = HoverTool()
+    ht.tooltips = [("Time", "@index{%F %T}"),
+                   ("AirTemp", "@AirTemp{0.0} C"),
+                   ("MountTemp", "@MountTemp{0.0} C"),
+                   ("Humidity", "@Humidity %"),
+                   ("DewPoint", "@DewPoint{0.0} C"),
+                   ]
+    ht.formatters = {'index': 'datetime'}
+    ht.show_arrow = False
+    ht.point_policy = 'follow_mouse'
+    ht.line_policy = 'nearest'
+    ht.renderers = [htline]
+    fig.add_tools(ht)
 
     #####
 
@@ -283,27 +281,29 @@ def make_dctweather(doc):
             #   time indicies!
             nf = rf.join(rf2, how='outer')
 
-            # Update the new hack patches, too
-            nix, niy = bplot.makePatches(rf, y1lim)
+            # Update the new hack patches, too. Special handling for the case
+            #   where we just have one new point in time, since
+            #   makePatches assumes that you give it enough to sketch out
+            #   a box.  It could be changed so it makes the last box the full
+            #   xwidth, and that it's .patch()'ed on update here to always be
+            #   correct.  But, that's a little too complicated for right now.
+            numRows = nf.shape[0]
+            if numRows == 1:
+                nidx = [lastTimedt, nf.index[-1]]
+                nix, niy = bplot.makePatches(nidx, y1lim)
+                ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
+                                   index=[nf.index[-1]])
+            else:
+                nix, niy = bplot.makePatches(nf.index, y1lim)
+                ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
+                                   index=nf.index)
 
-            # NOTE: y1lim should already have been set by this point since
-            #   the callback is called *after* the plot has already initialized
-            # ix, iy = bplot.makePatches(r, y1lim)
-            # mds = dict(index=rf.index, AirTemp=rf.AirTemp,
-            #            Humidity=rf.Humidity,
-            #            DewPoint=rf.DewPoint,
-            #            MountTemp=rf2.MountTemp,
-            #            ix=nix, iy=niy)
+            nf = nf.join(ndf, how='outer')
 
             # Actually update the cds in the plot.
-            #   Note that .stream expects a dict, whose keys match those in the
-            #   existing ColumnDataSource.
-            # If you forget, you'll keep getting an 'AttributeError' because
-            #   ColumnDataSource has no 'keys' attribute!
-            # cds.stream(mds, rollover=5000)
+            #   We can just stream a DataFrame! Makes life easy.
             cds.stream(nf, rollover=5000)
-            print(cds.data['MountTemp'][-10:])
-            print("Data references updated.")
+            print("New data streamed; %d row(s) added" % (numRows))
 
         # Update the X range, at least, to show that we're still moving
         print("Adjusted plot x-range.")
