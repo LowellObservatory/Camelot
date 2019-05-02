@@ -116,6 +116,8 @@ def make_dctweather(doc):
     #   put into the gaps so we don't get all confused later on
     r = r.join(r2, how='outer')
 
+    r.fillna(method='ffill', inplace=True)
+
     # Change F -> C because we're scientists god dammit
     r.AirTemp = (r.AirTemp - 32.) * (5./9.)
     r.DewPoint = (r.DewPoint - 32.) * (5./9.)
@@ -276,6 +278,7 @@ def make_dctweather(doc):
             #   mutilated since the two dataframes are on two different
             #   time indicies!
             nf = rf.join(rf2, how='outer')
+            nf.fillna(method='ffill', inplace=True)
 
             # Update the new hack patches, too. Special handling for the case
             #   where we just have one new point in time, since
