@@ -58,6 +58,10 @@ dset, _ = cwheels.getColors()
 # Raw query result dict
 qdata = OrderedDict()
 
+# CDS Sources; easier to keep them globals for now since I'm going down
+#   the path (to madness?) of inner functions
+# cds = ColumnDataSource()
+
 
 def batchQuery():
     """
@@ -166,10 +170,11 @@ def make_dctweather(doc):
                               axis_label=ldict['y2label']), 'right')
 
     # Make sure that we don't have too awkward of a dataframe by filling gaps
+    #   This has the benefit of making the tooltip patches WAY easier to handle
     r.fillna(method='ffill', inplace=True)
 
     # Hack! But it works. Need to do this *before* you create cds below!
-    ix, iy = bplot.makePatches(r.index, y1lim)
+    pix, piy = bplot.makePatches(r.index, y1lim)
 
     # The "master" data source to be used for plotting.
     #    I wish there was a way of abstracting this but I'm not
@@ -177,7 +182,7 @@ def make_dctweather(doc):
     #    the data keys? I dunno. "Future Work" for sure.
     mds = dict(index=r.index, AirTemp=r.AirTemp, Humidity=r.Humidity,
                DewPoint=r.DewPoint, MountTemp=r.MountTemp,
-               ix=ix, iy=iy)
+               pix=pix, piy=piy)
     cds = ColumnDataSource(mds)
 
     # Make the plots/lines!
@@ -200,7 +205,7 @@ def make_dctweather(doc):
 
     # # HACK HACK HACK HACK HACK
     # #   Apply the patches to carry the tooltips
-    simg = fig.patches('ix', 'iy', source=cds,
+    simg = fig.patches('pix', 'piy', source=cds,
                        fill_color=None,
                        fill_alpha=0.0,
                        line_color=None)
@@ -239,19 +244,27 @@ def make_dctweather(doc):
         #   stream data into the main CDS; do some sanitization to check
         #   that we're not going to suddenly barf because of that.
         try:
-            lastTimedt = lastTime.to_pydatetime()
+            # warn=False because I strip the nanoseconds out of everything
+            #   ... eventually.  Remember that 'warn' is only valid on an
+            #   individual Timestamp object, not the DatetimeIndex as a whole!
+            lastTimedt = lastTime.to_pydatetime(warn=False)
         except AttributeError:
             # This means it wasn't a Timestamp object, and it doesn't have
             #   the method that we want/desire.
             if type(lastTime) == np.datetime64:
                 print("Converting np.datetime64 to pydatetime...")
-                lastTimedt = lastTime.astype("M8[ms]").astype("O")
+
+                # A bit silly, but since pandas Timestamp is a subclass of 
+                #   datetime.datetime and speaks numpy.datetime64 this is easiest.
+                lastTimedt = pd.Timestamp(lastTime).to_pydatetime(warn=False)
+
                 # The server timezone has been set (during its setup) to UTC;
                 #   we need to specifically add that to avoid timezone
                 #   shenanigans because in a prior life we were bad and
                 #   apparently now must be punished
                 storageTZ = timezone('UTC')
                 lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
+                print("Converted %s to %s" % (lastTime, lastTimedt))
             else:
                 print("IDK WTF BBQ")
                 print("Unexpected timestamp type:", type(lastTime))
@@ -272,8 +285,21 @@ def make_dctweather(doc):
         # lastTimedt is dt.datetime object, but r.index has a type of
         #   Timestamp which is really a np.datetime64 wrapper. So we need
         #   to put them on the same page for actual comparisons.
-        rf = r[r.index.to_pydatetime() > lastTimedt]
-        rf2 = r2[r2.index.to_pydatetime() > lastTimedt]
+        # NOTE: The logic here was unrolled for debugging timestamp crap.
+        #   it can be rolled up again in the next version.
+        ripydt = r.index.to_pydatetime()
+        r2ipydt = r2.index.to_pydatetime()
+
+        print("Last time in r: %s" % (ripydt[-1]))
+        print("Last time in r2: %s" % (r2ipydt[-1]))
+        print("Last time in CDS: %s" % (lastTimedt))
+
+        rTimeSearchMask = ripydt > lastTimedt
+        r2TimeSearchMask = r2ipydt > lastTimedt
+
+        # Need .loc since we're really filtering by label
+        rf = r.loc[rTimeSearchMask]
+        rf2 = r2.loc[r2TimeSearchMask]
 
         if rf.size == 0 and rf2.size == 0:
             print("No new data.")
@@ -287,11 +313,32 @@ def make_dctweather(doc):
             rf.AirTemp = (rf.AirTemp - 32.) * (5./9.)
             rf.DewPoint = (rf.DewPoint - 32.) * (5./9.)
 
+            # At this point, there might be a NaN in the column(s) from rf2.
+            #   Since we stream only the NEW values, we need to be nice to 
+            #   ourselves and fill in the prior value for those columns so 
+            #   the tooltips function and don't spaz out. So get the final 
+            #   values manually and then fill them into those columns.
+            cfills = {}
+            if rf2.size == 0:
+                try:
+                    # This means that the data are a pandas Series
+                    mountFillVal = cds.data['MountTemp'].values[-1]
+                except AttributeError:
+                    # This means that the data are really just an array now
+                    mountFillVal = cds.data['MountTemp'][-1]
+
+                cfills.update({"MountTemp": mountFillVal})
+
             # Now join the dataframes into one single one that we can stream.
             #   Remember to use 'outer' otherwise information will be
             #   mutilated since the two dataframes are on two different
             #   time indicies!
             nf = rf.join(rf2, how='outer')
+
+            # Fill in our column holes. If there are *multiple* temporal holes, 
+            #   it'll look bonkers because there's only one fill value.
+            if cfills != {}:
+                nf.fillna(value=cfills, inplace=True)
 
             # Update the new hack patches, too. Special handling for the case
             #   where we just have one new point in time, since
@@ -304,21 +351,25 @@ def make_dctweather(doc):
                 print("Single row!")
                 nidx = [lastTimedt, nf.index[-1]]
                 nix, niy = bplot.makePatches(nidx, y1lim)
-                ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
+
+                
+                ndf = pd.DataFrame(data={'pix': nix, 'piy': niy},
                                    index=[nf.index[-1]])
             else:
                 print("Multirow!")
-                nidx = [lastTimedt].append(nf.index)
+                nidx = nf.index
+
+
                 nix, niy = bplot.makePatches(nidx, y1lim)
-                ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
+                ndf = pd.DataFrame(data={'pix': nix, 'piy': niy},
                                    index=nidx)
 
             nf = nf.join(ndf, how='outer')
-            # nf.fillna(method='ffill', inplace=True)
+            nf.fillna(method='ffill', inplace=True)
 
             # Actually update the cds in the plot.
             #   We can just stream a DataFrame! Makes life easy.
-            cds.stream(nf, rollover=5000)
+            cds.stream(nf, rollover=50000)
             print("New data streamed; %d row(s) added" % (numRows))
 
         # Update the X range, at least, to show that we're still moving
