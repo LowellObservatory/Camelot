@@ -349,27 +349,25 @@ def make_dctweather(doc):
             numRows = nf.shape[0]
             if numRows == 1:
                 print("Single row!")
-                nidx = [lastTimedt, nf.index[-1]]
+                nidx = [pd.Timestamp(lastTimedt), nf.index[-1]]
                 nix, niy = bplot.makePatches(nidx, y1lim)
-
-                
+                print("Made patches")
                 ndf = pd.DataFrame(data={'pix': nix, 'piy': niy},
                                    index=[nf.index[-1]])
+                print("Made DataFrame")
             else:
                 print("Multirow!")
                 nidx = nf.index
-
-
                 nix, niy = bplot.makePatches(nidx, y1lim)
                 ndf = pd.DataFrame(data={'pix': nix, 'piy': niy},
                                    index=nidx)
 
-            nf = nf.join(ndf, how='outer')
-            nf.fillna(method='ffill', inplace=True)
+            cf = nf.join(ndf, how='outer')
+            cf.fillna(method='ffill', inplace=True)
 
             # Actually update the cds in the plot.
             #   We can just stream a DataFrame! Makes life easy.
-            cds.stream(nf, rollover=50000)
+            cds.stream(cf, rollover=15000)
             print("New data streamed; %d row(s) added" % (numRows))
 
         # Update the X range, at least, to show that we're still moving
