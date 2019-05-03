@@ -16,6 +16,7 @@ from __future__ import division, print_function, absolute_import
 import datetime as dt
 from collections import OrderedDict
 
+import numpy as np
 import pandas as pd
 from pytz import timezone
 
@@ -234,6 +235,27 @@ def make_dctweather(doc):
         # Get the last timestamp present in the existing ColumnDataSource
         lastTime = cds.data['index'].max()
 
+        # It's possible that the timestamp class/type shifts slightly as we
+        #   stream data into the main CDS; do some sanitization to check
+        #   that we're not going to suddenly barf because of that.
+        try:
+            lastTimedt = lastTime.to_pydatetime()
+        except AttributeError:
+            # This means it wasn't a Timestamp object, and it doesn't have
+            #   the method that we want/desire.
+            if type(lastTime) == np.datetime64:
+                print("Converting np.datetime64 to pydatetime...")
+                lastTimedt = lastTime.astype("M8[ms]").astype("O")
+                # The server timezone has been set (during its setup) to UTC;
+                #   we need to specifically add that to avoid timezone
+                #   shenanigans because in a prior life we were bad and
+                #   apparently now must be punished
+                storageTZ = timezone('UTC')
+                lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
+            else:
+                print("IDK WTF BBQ")
+                print("Unexpected timestamp type:", type(lastTime))
+
         # Grab the newest data from the master query dictionary
         pdata = OrderedDict()
         for qtag in m.queries.keys():
@@ -243,20 +265,7 @@ def make_dctweather(doc):
         r = pdata['q_Rywrs']
         r2 = pdata['q_mounttemp']
 
-        # Divide by 1000 since it's actually nanoseconds since epoch
-        # lastTimedt = dt.datetime.utcfromtimestamp(lastTime/1000.)
-        # NOTE: This is probably not necessary anymore, and all the timestamp
-        #   logic can probably be overhauled and simplified since bokeh 1.1.0
-        #   seems to be smarter about this sort of thing.
-        lastTimedt = lastTime
-
-        # The server timezone has been set (during its setup) to UTC;
-        #   we need to specifically add that to avoid timezone shenanigans
-        #   because in a prior life we were bad and now must be punished
-        # storageTZ = timezone('UTC')
-        # lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
-
-        print("Selecting only data found since %s" % (lastTimedt.isoformat()))
+        print("Selecting only data found since %s" % (lastTimedt))
 
         # Now select only the data in those frames since lastTime
         #   But! Of course there's another caveat.
@@ -299,9 +308,10 @@ def make_dctweather(doc):
                                    index=[nf.index[-1]])
             else:
                 print("Multirow!")
-                nix, niy = bplot.makePatches(nf.index, y1lim)
+                nidx = [lastTimedt].append(nf.index)
+                nix, niy = bplot.makePatches(nidx, y1lim)
                 ndf = pd.DataFrame(data={'ix': nix, 'iy': niy},
-                                   index=nf.index)
+                                   index=nidx)
 
             nf = nf.join(ndf, how='outer')
             # nf.fillna(method='ffill', inplace=True)
