@@ -12,6 +12,7 @@ pngs
 *.swp
 *.gif
 *.mp4
+*.log
 */logs/*
 WebcamMcWebcamface/images/*
 GOESMcGOESface/outputs/*
