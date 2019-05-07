@@ -216,6 +216,27 @@ def commonPlot(ldict, height=None, width=None):
     return p
 
 
+def createHoverTool(simg, cols):
+    """
+    """
+    # Make the hovertool only follow the patches (still a hack)
+    htline = simg
+
+    ht = HoverTool()
+    ht.tooltips = [("Time", "@index{%F %T}")]
+    for col in cols:
+        fStr = "@%s{0.0}" % (col)
+        ht.tooltips.append((col, fStr))
+
+    ht.formatters = {'index': 'datetime'}
+    ht.show_arrow = False
+    ht.point_policy = 'follow_mouse'
+    ht.line_policy = 'nearest'
+    ht.renderers = [htline]
+
+    return ht
+
+
 def makeNewPatches(nf, y1lim, lastTimedt):
     """
     Make a new set of patches based on the stuff in the 'nf' Dataframe.

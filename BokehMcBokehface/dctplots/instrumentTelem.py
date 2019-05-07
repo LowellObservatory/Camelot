@@ -18,13 +18,72 @@ from __future__ import division, print_function, absolute_import
 import datetime as dt
 from collections import OrderedDict
 
-import numpy as np
-import pandas as pd
-
 from bokeh.plotting import ColumnDataSource
-from bokeh.models import DataRange1d, HoverTool, Legend, LegendItem
+from bokeh.models import HoverTool, Legend, LegendItem
 
 from . import modulePlots as bplot
+
+
+def dataGatherer(m, qdata, timeFilter=None, fillNull=True, debug=True):
+    """
+    Instrument/plot/query specific contortions needed to make the
+    bulk of the plot code generic and abstract.  I feel ok
+    hardcoding stuff in here at least, since this will always be namespace
+    protected and unambigious (instrumentTelem.dataGatherer).
+    """
+    pdata = OrderedDict()
+    for qtag in m.queries.keys():
+        pdata.update({qtag: qdata[qtag]})
+
+    # Get the keys that define the input dataset
+    r = pdata['q_insttemps']['deveny']
+    r2 = pdata['q_insttemps']['lemi']
+
+    # Since it was a batch query, we need to add prefixes to each
+    #   so we know what they are after joining
+    r = r.add_prefix("Deveny")
+    r2 = r2.add_prefix("LMI")
+
+    if timeFilter is None:
+        # Join them so the timestamps are sorted for us nicely, and nan's
+        #   put into the gaps so we don't get all confused later on
+        rj = r.join(r2, how='outer')
+
+        if fillNull is True:
+            # Make sure that we don't have too awkward of a dataframe
+            #   by filling gaps. This has the benefit of making the
+            #   tooltip patches WAY easier to handle.
+            rj.fillna(method='ffill', inplace=True)
+    else:
+        # Now select only the data in those frames since lastTime
+        #   But! Of course there's another caveat.
+        # lastTimedt could be a dt.datetime object, but r.index has a type of
+        #   Timestamp which is really a np.datetime64 wrapper. So we need
+        #   to put them on the same page for actual comparisons.
+        # NOTE: The logic here was unrolled for debugging timestamp crap.
+        #   it can be rolled up again in the next version.
+        ripydt = r.index.to_pydatetime()
+        r2ipydt = r2.index.to_pydatetime()
+
+        if debug is True:
+            print("Last in CDS: %s" % (timeFilter))
+            print("Last in r  : %s" % (ripydt[-1]))
+            print("Last in r2 : %s" % (r2ipydt[-1]))
+
+        rTimeSearchMask = ripydt > timeFilter
+        r2TimeSearchMask = r2ipydt > timeFilter
+
+        # Need .loc since we're really filtering by label
+        rf = r.loc[rTimeSearchMask]
+        rf2 = r2.loc[r2TimeSearchMask]
+
+        # Now join the dataframes into one single one that we can stream.
+        #   Remember to use 'outer' otherwise information will be
+        #   mutilated since the two dataframes are on two different
+        #   time indicies!
+        rj = rf.join(rf2, how='outer')
+
+    return rj
 
 
 def make_plot(doc):
@@ -42,26 +101,15 @@ def make_plot(doc):
 
     # Hard coding the access/dict key for the data needed for this plot
     #   ... no, I'm not happy about this either.  This is pretty fugly.
+    # Ultimately, I need to combine mods and qdata into a single dict
+    #   and select based on that.  But that can come later.
     m = mods[2]
 
     print("Serving %s" % (m.title))
-    # Gather up the query data into a single dict so we don't
-    #   have to encode absolutely everything in every single plot/page
-    pdata = OrderedDict()
-    for qtag in m.queries.keys():
-        pdata.update({qtag: qdata[qtag]})
 
-    # Setting y1lim to None lets it autoscale based on the data;
-    #   Seemed best to keep humidity as 0-100 though.
-    y1lim = None
-
-    # Get the keys that define the input dataset
-    r = pdata['q_insttemps']['deveny']
-    r2 = pdata['q_insttemps']['lemi']
-
-    # Join them so the timestamps are sorted for us nicely, and nan's
-    #   put into the gaps so we don't get all confused later on
-    r = r.join(r2, how='outer', lsuffix='_deveny', rsuffix='_lemi')
+    # Use this to consistently filter/gather the data based on some
+    #   specific tags/reorganizing
+    r = dataGatherer(m, qdata)
 
     # A dict of helpful plot labels
     ldict = {'title': "Instrument Temperatures",
@@ -70,12 +118,15 @@ def make_plot(doc):
 
     fig = bplot.commonPlot(ldict, height=400, width=600)
 
+    # Since we haven't plotted anything yet, we don't have a decent idea
+    #   of the bounds that we make our patches over. So just do that manually.
     # Remember that .min and .max are methods! Need the ()
     #   Also adjust plot extents to pad +/- N percent
     npad = 0.1
+    y1lim = None
     if y1lim is None:
-        y1lim = [r.CCDTemp_lemi.min(skipna=True),
-                 r.AUXTemp_lemi.max(skipna=True)]
+        y1lim = [r.LMICCDTemp.min(skipna=True),
+                 r.LMIAUXTemp.max(skipna=True)]
 
         # Now pad them appropriately, checking for a negative limit
         if y1lim[0] < 0:
@@ -88,16 +139,14 @@ def make_plot(doc):
         else:
             y1lim[1] *= (1.+npad)
 
-    # fig.y_range = DataRange1d(start=y1lim[0], end=y1lim[1])
-    # fig.x_range = DataRange1d(start=timeNow-tWindow, end=timeNow+tEndPad)
+    #
+    # NOTE: At this point, the *rest* of the code is more or less
+    #   completely generic and should be function-ed out!
+    #
 
     fig.x_range.follow = "end"
     fig.x_range.range_padding = 0.1
     fig.x_range.range_padding_units = 'percent'
-
-    # Make sure that we don't have too awkward of a dataframe by filling gaps
-    #   This has the benefit of making the tooltip patches WAY easier to handle
-    r.fillna(method='ffill', inplace=True)
 
     # Hack! But it works. Need to do this *before* you create cds below!
     #   Includes a special flag (first=True) to pad the beginning so all
@@ -105,27 +154,30 @@ def make_plot(doc):
     pix, piy = bplot.makePatches(r.index, y1lim, first=True)
 
     # The "master" data source to be used for plotting.
-    #    I wish there was a way of abstracting this but I'm not
-    #    clever enough. Make the dict in a loop using
-    #    the data keys? I dunno. "Future Work" for sure.
+    #   Generate it via the column names in the now-merged 'r' DataFrame
+    #   Start with the 'index' 'pix' and 'piy' since they're always those names
+    mds = dict(index=r.index, pix=pix, piy=piy)
 
-    mds = dict(index=r.index,
-               CCDDeveny=r.CCDTemp_deveny, CCDLMI=r.CCDTemp_lemi,
-               AUXDeveny=r.AUXTemp_deveny, AUXLMI=r.AUXTemp_lemi,
-               pix=pix, piy=piy)
+    # Start our plot source
     cds = ColumnDataSource(mds)
 
-    # Make the plots/lines!
-    l1, _ = bplot.plotLineWithPoints(fig, cds, "CCDDeveny", dset[0])
-    l2, _ = bplot.plotLineWithPoints(fig, cds, "CCDLMI", dset[1])
-    l3, _ = bplot.plotLineWithPoints(fig, cds, "AUXDeveny", dset[2])
-    l4, _ = bplot.plotLineWithPoints(fig, cds, "AUXLMI", dset[3])
+    # Now loop over the rest of our columns to fill it out, plotting as we go
+    cols = r.columns
+    lineSet = []
+    legendItems = []
+    for i, col in enumerate(cols):
+        # Add our data to the cds
+        cds.add(getattr(r, col), name=col)
 
-    li1 = LegendItem(label="CCDDeveny", renderers=[l1])
-    li2 = LegendItem(label="CCDLMI", renderers=[l2])
-    li3 = LegendItem(label="AUXDeveny", renderers=[l3])
-    li4 = LegendItem(label="AUXLMI", renderers=[l4])
-    legend = Legend(items=[li1, li2, li3, li4],
+        # Make the actual line plot object
+        lineObj, _ = bplot.plotLineWithPoints(fig, cds, col, dset[i])
+        lineSet.append(lineObj)
+
+        # Now make it's corresponding legend item
+        legendObj = LegendItem(label=col, renderers=[lineObj])
+        legendItems.append(legendObj)
+
+    legend = Legend(items=legendItems,
                     location="bottom_center",
                     orientation='horizontal', spacing=15)
     fig.add_layout(legend, 'below')
@@ -133,28 +185,18 @@ def make_plot(doc):
     # Customize the active tools
     fig.toolbar.autohide = True
 
-    # # HACK HACK HACK HACK HACK
-    # #   Apply the patches to carry the tooltips
+    # HACK HACK HACK HACK HACK
+    #   Apply the patches to carry the tooltips
+    #
+    # Shouldn't I just stream this instead of pix/nix and piy/niy ???
+    #
     simg = fig.patches('pix', 'piy', source=cds,
                        fill_color=None,
                        fill_alpha=0.0,
                        line_color=None)
 
-    # Make the hovertool only follow the patches (still a hack)
-    htline = simg
-
-    ht = HoverTool()
-    ht.tooltips = [("Time", "@index{%F %T}"),
-                   ("CCDDeveny", "@CCDDeveny{0.0} C"),
-                   ("CCDLMI", "@CCDLMI{0.0} C"),
-                   ("AUXDeveny", "@AUXDeveny C"),
-                   ("AUXLMI", "@AUXLMI{0.0} C"),
-                   ]
-    ht.formatters = {'index': 'datetime'}
-    ht.show_arrow = False
-    ht.point_policy = 'follow_mouse'
-    ht.line_policy = 'nearest'
-    ht.renderers = [htline]
+    # This will also create the tooltips for each of the entries in cols
+    ht = bplot.createHoverTool(simg, cols)
     fig.add_tools(ht)
 
     #####
@@ -178,37 +220,11 @@ def make_plot(doc):
         # Turn it into a datetime.datetime (with UTC timezone)
         lastTimedt = bplot.convertTimestamp(lastTime, tz='UTC')
 
-        # Grab the newest data from the master query dictionary
-        pdata = OrderedDict()
-        for qtag in m.queries.keys():
-            pdata.update({qtag: qdata[qtag]})
+        # Sweep up all the data, and filter down to only those
+        #   after the given time
+        nf = dataGatherer(m, qdata, timeFilter=lastTimedt)
 
-        # Update the data references; these are actual DataFrame objects btw.
-        r = pdata['q_insttemps']['deveny']
-        r2 = pdata['q_insttemps']['lemi']
-
-        # Now select only the data in those frames since lastTime
-        #   But! Of course there's another caveat.
-        # lastTimedt is dt.datetime object, but r.index has a type of
-        #   Timestamp which is really a np.datetime64 wrapper. So we need
-        #   to put them on the same page for actual comparisons.
-        # NOTE: The logic here was unrolled for debugging timestamp crap.
-        #   it can be rolled up again in the next version.
-        ripydt = r.index.to_pydatetime()
-        r2ipydt = r2.index.to_pydatetime()
-
-        print("Last in CDS: %s" % (lastTimedt))
-        print("Last in r  : %s" % (ripydt[-1]))
-        print("Last in r2 : %s" % (r2ipydt[-1]))
-
-        rTimeSearchMask = ripydt > lastTimedt
-        r2TimeSearchMask = r2ipydt > lastTimedt
-
-        # Need .loc since we're really filtering by label
-        rf = r.loc[rTimeSearchMask]
-        rf2 = r2.loc[r2TimeSearchMask]
-
-        if rf.size == 0 and rf2.size == 0:
+        if nf.size == 0:
             print("No new data.")
         else:
             # At this point, there might be a NaN in the column(s) from rf2.
@@ -217,29 +233,9 @@ def make_plot(doc):
             #   the tooltips function and don't spaz out. So get the final
             #   values manually and then fill them into those columns.
             cfills = {}
-            fillVal1 = bplot.getLastVal(cds, 'CCDDeveny')
-            fillVal2 = bplot.getLastVal(cds, 'CCDLMI')
-            fillVal3 = bplot.getLastVal(cds, 'AUXDeveny')
-            fillVal4 = bplot.getLastVal(cds, 'AUXLMI')
-            cfills.update({"CCDDeveny": fillVal1,
-                           "CCDLMI": fillVal2,
-                           "AUXDeveny": fillVal3,
-                           "AUXLMI": fillVal4})
-
-            # Now join the dataframes into one single one that we can stream.
-            #   Remember to use 'outer' otherwise information will be
-            #   mutilated since the two dataframes are on two different
-            #   time indicies!
-            nf = rf.join(rf2, how='outer', lsuffix='_deveny', rsuffix='_lemi')
-
-            # Need to make sure that the column names in the dataframe
-            #   actually match those that we set in the
-            #   original ColumnDataSource
-            nf.rename(columns={"CCDTemp_deveny": "CCDDeveny",
-                               "CCDTemp_lemi": "CCDLMI",
-                               "AUXTemp_deveny": "AUXDeveny",
-                               "AUXTemp_lemi": "AUXLMI"},
-                      inplace=True)
+            for col in cols:
+                fillVal = bplot.getLastVal(cds, col)
+                cfills.update({col: fillVal})
 
             # Fill in our column holes. If there are *multiple* temporal holes,
             #   it'll look bonkers because there's only one fill value.
@@ -250,20 +246,17 @@ def make_plot(doc):
 
             # It is VITALLY important that the length of all of these
             #   is the same! If it's not, it'll slowly go bonkers.
+            #
             # Could add a check to make sure here, but I'll ride dirty for now.
-            mds2 = dict(index=nf.index,
-                        CCDDeveny=nf.CCDDeveny,
-                        CCDLMI=nf.CCDLMI,
-                        AUXDeveny=nf.AUXDeveny,
-                        AUXLMI=nf.AUXLMI,
-                        pix=nix, piy=niy)
+            mds2 = dict(index=nf.index, pix=nix, piy=niy)
+            for col in cols:
+                mds2.update({col: getattr(nf, col)})
 
             cds.stream(mds2, rollover=15000)
             print("New data streamed; %d row(s) added" % (nf.shape[0]))
 
         print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
         print("")
-
 
     doc.add_periodic_callback(grabNew, 5000)
 
