@@ -352,7 +352,6 @@ def make_plot(doc):
         print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
         print("")
 
-
     doc.add_periodic_callback(grabNew, 5000)
 
     return doc

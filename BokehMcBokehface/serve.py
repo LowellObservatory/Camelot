@@ -137,6 +137,14 @@ if __name__ == "__main__":
     #   I'm ditching it since I'm not using it
     dset, _ = cwheels.getColors()
 
+    # Set up logging to a file
+    # TODO: Just use my standard ligmos logger to grab everything?
+    #   Initial attempt failed because python logging is really weird
+    print("Sending the output to the file")
+    logconfig.basicConfig(level='DEBUG',
+                          format='%(asctime)s %(levelname)-8s %(message)s',
+                          filename='./bokehmcbokehface.log')
+
     # Now pack it all into a nice class that can be added to the
     #   main doc to be inherited by each plot that we make
     plotState = masterPlotState()
@@ -150,10 +158,6 @@ if __name__ == "__main__":
     # Go and get our initial state of data. Give it the masterPlotState
     #   class so it can be initially stashed in the doc template
     batchQuery(plotState=plotState)
-
-    # Set up logging to a file
-    # TODO: Just use my standard ligmos logger to grab anything and everything
-    logconfig.basicConfig(level='DEBUG', filename='./bokehmcbokehface.log')
 
     # Set up the server
     server = configServer()
