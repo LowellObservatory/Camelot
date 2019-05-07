@@ -143,7 +143,7 @@ if __name__ == "__main__":
     print("Sending the output to the file")
     logconfig.basicConfig(level='DEBUG',
                           format='%(asctime)s %(levelname)-8s %(message)s',
-                          filename='./bokehmcbokehface.log')
+                          filename='./logs/bokehmcbokehface.log')
 
     # Now pack it all into a nice class that can be added to the
     #   main doc to be inherited by each plot that we make
