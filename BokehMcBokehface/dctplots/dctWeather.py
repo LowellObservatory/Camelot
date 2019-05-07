@@ -28,6 +28,21 @@ from bokeh.models import DataRange1d, LinearAxis, \
 
 from . import modulePlots as bplot
 
+def getLastVal(cds, cdstag):
+    """
+    """
+    # Default/failsafe value
+    fVal = np.nan
+
+    try:
+        # This means that the data are a pandas Series
+        fVal = cds.data[cdstag].values[-1]
+    except AttributeError:
+        # This means that the data are really just an array now
+        fVal = cds.data[cdstag][-1]
+
+    return fVal
+
 
 def make_plot(doc):
     """
@@ -275,15 +290,17 @@ def make_plot(doc):
             #   the tooltips function and don't spaz out. So get the final
             #   values manually and then fill them into those columns.
             cfills = {}
-            if rf2.size == 0:
-                try:
-                    # This means that the data are a pandas Series
-                    mountFillVal = cds.data['MountTemp'].values[-1]
-                except AttributeError:
-                    # This means that the data are really just an array now
-                    mountFillVal = cds.data['MountTemp'][-1]
 
-                cfills.update({"MountTemp": mountFillVal})
+            # Get the fill values that might be needed for all of our series
+            tempFillVal = getLastVal(cds, 'AirTemp')
+            humiFillVal = getLastVal(cds, 'Humidity')
+            dewpFillVal = getLastVal(cds, 'DewPoint')
+            mountFillVal = getLastVal(cds, 'MountTemp')
+
+            cfills.update({"MountTemp": mountFillVal,
+                           "AirTemp": tempFillVal,
+                           "Humidity": humiFillVal,
+                           "DewPoint": dewpFillVal})
 
             # Now join the dataframes into one single one that we can stream.
             #   Remember to use 'outer' otherwise information will be
@@ -293,8 +310,7 @@ def make_plot(doc):
 
             # Fill in our column holes. If there are *multiple* temporal holes,
             #   it'll look bonkers because there's only one fill value.
-            if cfills != {}:
-                nf.fillna(value=cfills, inplace=True)
+            nf.fillna(value=cfills, inplace=True)
 
             # Update the new hack patches, too. Special handling for the case
             #   where we just have one new point in time, since
@@ -312,6 +328,9 @@ def make_plot(doc):
                                    index=[nf.index[-1]])
                 print("Made DataFrame")
             else:
+                # This implies that there are multiple rows, or, more likely,
+                #   two different time frames that pandas filled with nans
+                #   during the join.  The latter makes our life ... complex.
                 print("Multirow!")
                 nidx = nf.index
                 nix, niy = bplot.makePatches(nidx, y1lim)
