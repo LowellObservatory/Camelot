@@ -19,7 +19,7 @@ import datetime as dt
 from collections import OrderedDict
 
 from bokeh.plotting import ColumnDataSource
-from bokeh.models import HoverTool, Legend, LegendItem
+from bokeh.models import Legend, LegendItem
 
 from . import modulePlots as bplot
 
