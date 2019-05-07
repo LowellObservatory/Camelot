@@ -56,8 +56,6 @@ def make_plot(doc):
     y1lim = None
 
     # Get the keys that define the input dataset
-    #   TODO: make the first defined tag the "primary" meaning X1/Y1 plot
-    #         ...but I can't quite figure out the abstraction well enough.
     r = pdata['q_insttemps']['deveny']
     r2 = pdata['q_insttemps']['lemi']
 
@@ -76,8 +74,6 @@ def make_plot(doc):
     #   Also adjust plot extents to pad +/- N percent
     npad = 0.1
     if y1lim is None:
-        # Not a typo; make sure that the dewpoint values are always included
-        #   since they're always the lowest (and sometimes negative)
         y1lim = [r.CCDTemp_lemi.min(skipna=True),
                  r.AUXTemp_lemi.max(skipna=True)]
 
@@ -112,6 +108,7 @@ def make_plot(doc):
     #    I wish there was a way of abstracting this but I'm not
     #    clever enough. Make the dict in a loop using
     #    the data keys? I dunno. "Future Work" for sure.
+
     mds = dict(index=r.index,
                CCDDeveny=r.CCDTemp_deveny, CCDLMI=r.CCDTemp_lemi,
                AUXDeveny=r.AUXTemp_deveny, AUXLMI=r.AUXTemp_lemi,
@@ -214,25 +211,16 @@ def make_plot(doc):
         if rf.size == 0 and rf2.size == 0:
             print("No new data.")
         else:
-            # Prune out stuff we don't want/care about anymore.
-            #   If there are columns that end up in 'nf' below that aren't
-            #   already in the main CDS, Bokeh will barf/the plot won't update.
-            # rf = rf.drop("WindDir2MinAvg", axis=1)
-            # rf = rf.drop("WindSpeed2MinAvg", axis=1)
-
             # At this point, there might be a NaN in the column(s) from rf2.
             #   Since we stream only the NEW values, we need to be nice to
             #   ourselves and fill in the prior value for those columns so
             #   the tooltips function and don't spaz out. So get the final
             #   values manually and then fill them into those columns.
             cfills = {}
-
-            # Get the fill values that might be needed for all of our series
             fillVal1 = bplot.getLastVal(cds, 'CCDDeveny')
             fillVal2 = bplot.getLastVal(cds, 'CCDLMI')
             fillVal3 = bplot.getLastVal(cds, 'AUXDeveny')
             fillVal4 = bplot.getLastVal(cds, 'AUXLMI')
-
             cfills.update({"CCDDeveny": fillVal1,
                            "CCDLMI": fillVal2,
                            "AUXDeveny": fillVal3,
@@ -257,38 +245,12 @@ def make_plot(doc):
             #   it'll look bonkers because there's only one fill value.
             nf.fillna(value=cfills, inplace=True)
 
-            # Update the new hack patches, too. Special handling for the case
-            #   where we just have one new point in time, since
-            #   makePatches assumes that you give it enough to sketch out
-            #   a box.  It could be changed so it makes the last box the full
-            #   xwidth, and that it's .patch()'ed on update here to always be
-            #   correct.  But, that's a little too complicated for right now.
-            # This is generally confusing without a diagram. Sorry.
-            #   Just know that it's VITALLY important to make sure your
-            #   final stream()'ed values are the same length or else it'll
-            #   go bonkers.  Also, don't pass in a dataframe; make the dict()
-            #   yourself, otherwise pix/piy might unroll and it'll go bonkers.
-            # Bonkers.
-            numRows = nf.shape[0]
-            if numRows == 1:
-                print("Single row!")
+            # Create the patches for the *new* data only
+            nix, niy = bplot.makeNewPatches(nf, y1lim, lastTimedt)
 
-                nidx = [pd.Timestamp(lastTimedt), nf.index[-1]]
-                nix, niy = bplot.makePatches(nidx, y1lim)
-                fix = [nf.index[-1]]
-
-                print("Made patches")
-                print(np.shape(nix), np.shape(niy), np.shape(fix))
-            else:
-                print("Multirow!")
-
-                nidx = [pd.Timestamp(lastTimedt)] + list(nf.index)
-                nix, niy = bplot.makePatches(nidx, y1lim)
-                fix = nidx[:-1]
-
-                print("Made patches")
-                print(np.shape(nix), np.shape(niy), np.shape(fix))
-
+            # It is VITALLY important that the length of all of these
+            #   is the same! If it's not, it'll slowly go bonkers.
+            # Could add a check to make sure here, but I'll ride dirty for now.
             mds2 = dict(index=nf.index,
                         CCDDeveny=nf.CCDDeveny,
                         CCDLMI=nf.CCDLMI,
@@ -297,14 +259,11 @@ def make_plot(doc):
                         pix=nix, piy=niy)
 
             cds.stream(mds2, rollover=15000)
-            print("New data streamed; %d row(s) added" % (numRows))
-
-        # Manually override the X range so we get the windowing I prefer
-        # fig.x_range.start = timeNow-tWindow
-        # fig.x_range.end = timeNow+tEndPad
+            print("New data streamed; %d row(s) added" % (nf.shape[0]))
 
         print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
         print("")
+
 
     doc.add_periodic_callback(grabNew, 5000)
 

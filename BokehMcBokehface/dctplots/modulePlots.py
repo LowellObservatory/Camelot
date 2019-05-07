@@ -216,6 +216,44 @@ def commonPlot(ldict, height=None, width=None):
     return p
 
 
+def makeNewPatches(nf, y1lim, lastTimedt):
+    """
+    Make a new set of patches based on the stuff in the 'nf' Dataframe.
+
+    This is most useful when stream()ing new data to an already
+    existing ColumnDataSource.
+
+    There is some special handling necessary for the case where we just
+    have one new point in time, since makePatches assumes that you give
+    it enough to sketch out a box.  It could be changed so it makes
+    the last box the full xwidth, and that it's .patch()'ed on update
+    here to always be correct.  But, that's a little too complicated right now.
+
+    This is generally confusing without a diagram. Sorry.
+    """
+    numRows = nf.shape[0]
+    if numRows == 1:
+        print("Single row!")
+
+        nidx = [pd.Timestamp(lastTimedt), nf.index[-1]]
+        nix, niy = makePatches(nidx, y1lim)
+        fix = [nf.index[-1]]
+
+        print("Made patches")
+        print(np.shape(nix), np.shape(niy), np.shape(fix))
+    else:
+        print("Multirow!")
+
+        nidx = [pd.Timestamp(lastTimedt)] + list(nf.index)
+        nix, niy = makePatches(nidx, y1lim)
+        fix = nidx[:-1]
+
+        print("Made patches")
+        print(np.shape(nix), np.shape(niy), np.shape(fix))
+
+    return nix, niy
+
+
 def makePatches(xindex, y1lim, first=False):
     """
     This is a bit of a HACK!  It might be a little screwy at the edges.
