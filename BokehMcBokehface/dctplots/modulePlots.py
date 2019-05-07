@@ -216,7 +216,7 @@ def commonPlot(ldict, height=None, width=None):
     return p
 
 
-def makePatches(xindex, y1lim):
+def makePatches(xindex, y1lim, first=False):
     """
     This is a bit of a HACK!  It might be a little screwy at the edges.
 
@@ -227,15 +227,41 @@ def makePatches(xindex, y1lim):
     """
     ix = []
     iy = []
-    for i, _ in enumerate(xindex):
-        if i > 0:
-            ix.append([xindex[i-1], xindex[i], xindex[i], xindex[i-1]])
-            iy.append([y1lim[0], y1lim[0], y1lim[1], y1lim[1]])
 
-    # ColumnDataSource needs everything to have the same length. The last point
-    #   might get two tooltips, but I don't care for now.
-    # ix.append(ix[-1])
-    # iy.append(iy[-1])
+    if len(xindex) < 2:
+        print("ERROR: Need at least two xindex values!")
+        raise ValueError
+
+    if len(y1lim) != 2:
+        print("ERROR: Need exactly two y1lim values!")
+        raise ValueError
+
+    for i, _ in enumerate(xindex):
+        store = False
+        # NOTE: Life is just easier if we make sure to keep things in
+        #   terms of pandas.Timestamp from this point forward, since
+        #   this will ultimately be stream()'ed back into the
+        #   original plot's ColumnDataSource, which was really a
+        #   pandas.DataFrame at the start of it's life
+        if i == 0:
+            if first is True:
+                # Special case for the very first row of data the first
+                #   time we make the hacked patches; we pad out the xrange
+                #   so the first value is shown.  Subsequent calls
+                #   MUST be first=False or else things will go poorly, quickly
+                # It's small enough to hit, but not large enough to screw with
+                #   the auto-scaled x range.  Or at least that's the intent!
+                x1 = pd.Timestamp(xindex[0])
+                x0 = x1 - pd.Timedelta(seconds=60)
+                store = True
+        else:
+            x0 = pd.Timestamp(xindex[i-1])
+            x1 = pd.Timestamp(xindex[i])
+            store = True
+
+        if store is True:
+            ix.append([x0, x1, x1, x0])
+            iy.append([y1lim[0], y1lim[0], y1lim[1], y1lim[1]])
 
     return ix, iy
 

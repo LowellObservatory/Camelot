@@ -29,7 +29,7 @@ import dctplots.confHerder as ch
 import dctplots.dbQueries as dbq
 import dctplots.colorWheelies as cwheels
 
-from dctplots import dctWeather
+from dctplots import dctWeather, instrumentTelem
 
 
 # Make sure all the endpoints work from the same base document.
@@ -107,7 +107,12 @@ def configServer():
     # LOOP OVER THE CONFIG TO MAKE THIS
     dctWeatherFunc = FunctionHandler(dctWeather.make_plot)
     dctWeatherApp = Application(dctWeatherFunc)
-    apps = {'/dctweather': dctWeatherApp}
+
+    lmiTempFunc = FunctionHandler(instrumentTelem.make_plot)
+    lmiTempApp = Application(lmiTempFunc)
+
+    apps = {'/dctweather': dctWeatherApp,
+            '/lmitemps': lmiTempApp}
 
     print("Starting bokeh server...")
     server = Server(apps, port=5000,
