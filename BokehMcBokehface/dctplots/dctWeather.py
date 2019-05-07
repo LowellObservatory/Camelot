@@ -28,21 +28,6 @@ from bokeh.models import DataRange1d, LinearAxis, \
 
 from . import modulePlots as bplot
 
-def getLastVal(cds, cdstag):
-    """
-    """
-    # Default/failsafe value
-    fVal = np.nan
-
-    try:
-        # This means that the data are a pandas Series
-        fVal = cds.data[cdstag].values[-1]
-    except AttributeError:
-        # This means that the data are really just an array now
-        fVal = cds.data[cdstag][-1]
-
-    return fVal
-
 
 def make_plot(doc):
     """
@@ -292,10 +277,10 @@ def make_plot(doc):
             cfills = {}
 
             # Get the fill values that might be needed for all of our series
-            tempFillVal = getLastVal(cds, 'AirTemp')
-            humiFillVal = getLastVal(cds, 'Humidity')
-            dewpFillVal = getLastVal(cds, 'DewPoint')
-            mountFillVal = getLastVal(cds, 'MountTemp')
+            tempFillVal = bplot.getLastVal(cds, 'AirTemp')
+            humiFillVal = bplot.getLastVal(cds, 'Humidity')
+            dewpFillVal = bplot.getLastVal(cds, 'DewPoint')
+            mountFillVal = bplot.getLastVal(cds, 'MountTemp')
 
             cfills.update({"MountTemp": mountFillVal,
                            "AirTemp": tempFillVal,

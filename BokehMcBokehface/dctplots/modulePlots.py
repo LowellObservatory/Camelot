@@ -23,7 +23,7 @@ import datetime as dt
 
 import numpy as np
 
-from bokeh.models import Range1d, LinearAxis, \
+from bokeh.models import Range1d, \
                          HoverTool, Legend, LegendItem, \
                          DataTable, TableColumn
 from bokeh.plotting import figure, output_file, ColumnDataSource
@@ -54,8 +54,32 @@ class valJudgement(object):
             self.tooOld = False
 
 
+def getLastVal(cds, cdstag):
+    """
+    Given a ColumnDataSource (or numpy array) return the last value.
+
+    Mostly useful to grab a quick-and-dirty 'fill' value when combining
+    multiple independent sources.
+
+    Does not check if that last value is actually a NaN, which is probably
+    a bad thing to ignore.  But that could be fixed too.
+    """
+    # Default/failsafe value
+    fVal = np.nan
+
+    try:
+        # This means that the data are a pandas Series
+        fVal = cds.data[cdstag].values[-1]
+    except AttributeError:
+        # This means that the data are really just an array now
+        fVal = cds.data[cdstag][-1]
+
+    return fVal
+
+
 def getLast(p1, lastIdx=None, comptime=None):
     """
+    TODO: Remember how this is different than the one above (getLastVal)
     """
     if lastIdx is None:
         # Get the last valid position/value in the dataframe
