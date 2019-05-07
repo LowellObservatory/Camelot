@@ -132,7 +132,7 @@ def checkForEmptyData(indat):
     return abort
 
 
-def commonPlot(r, ldict):
+def commonPlot(ldict, height=None, width=None):
     """
     """
     tools = "pan, wheel_zoom, box_zoom, crosshair, reset, save"
@@ -145,8 +145,11 @@ def commonPlot(r, ldict):
                x_axis_label=xlabel, y_axis_label=y1label,
                tools=tools, output_backend="webgl")
 
-    # Make the x-range the maximum data time span to start
-    p.x_range = Range1d(start=r.index[0], end=r.index[-1])
+    if height is not None:
+        p.plot_height = height
+
+    if width is not None:
+        p.plot_width = width
 
     return p
 

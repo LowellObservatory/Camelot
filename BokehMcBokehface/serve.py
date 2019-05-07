@@ -88,14 +88,17 @@ def batchQuery(plotState=None):
     #   can actually access the stuff they need
     # TODO: Figure this shit out.
     if plotState is not None:
+        # Update our class, then stash it
         plotState.data = qdata
         plotState.timestamp = dts
+
         # Here's the sneaky stash!
         doc.template.globals.update({'plotState': plotState})
         print("Data stashed in doc.template.globals.")
     else:
-        doc.template.globals['plotState'].timestamp = dts
+        # We already stashed, so just update the changed bits
         doc.template.globals['plotState'].data = qdata
+        doc.template.globals['plotState'].timestamp = dts
 
 
 def configServer():

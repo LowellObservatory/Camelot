@@ -61,7 +61,7 @@ def make_plot(doc):
     # Get the keys that define the input dataset
     #   TODO: make the first defined tag the "primary" meaning X1/Y1 plot
     #         ...but I can't quite figure out the abstraction well enough.
-    r = pdata['q_Rywrs']
+    r = pdata['q_dctweather']
     r2 = pdata['q_mounttemp']
 
     # Join them so the timestamps are sorted for us nicely, and nan's
@@ -78,7 +78,7 @@ def make_plot(doc):
              'y1label': "Temperature (C)",
              'y2label': "Humidity (%)"}
 
-    fig = bplot.commonPlot(r, ldict)
+    fig = bplot.commonPlot(ldict, height=500, width=600)
     timeNow = dt.datetime.utcnow()
     tWindow = dt.timedelta(hours=13)
     tEndPad = dt.timedelta(hours=0.5)
@@ -190,10 +190,14 @@ def make_plot(doc):
         # Check our stash
         qdata = doc.template.globals['plotState'].data
         timeUpdate = doc.template.globals['plotState'].timestamp
-        print("Data were updated at %s" % (timeUpdate))
+        tdiff = (dt.datetime.utcnow() - timeUpdate).total_seconds()
+        print("Data were updated %f seconds ago (%s)" % (tdiff, timeUpdate))
 
         # Get the last timestamp present in the existing ColumnDataSource
         lastTime = cds.data['index'].max()
+
+        # Update our current time so we can adjust the plot range
+        timeNow = dt.datetime.utcnow()
 
         # It's possible that the timestamp class/type shifts slightly as we
         #   stream data into the main CDS; do some sanitization to check
@@ -207,10 +211,9 @@ def make_plot(doc):
             # This means it wasn't a Timestamp object, and it doesn't have
             #   the method that we want/desire.
             if type(lastTime) == np.datetime64:
-                print("Converting np.datetime64 to pydatetime...")
-
                 # A bit silly, but since pandas Timestamp is a subclass of
-                #   datetime.datetime and speaks numpy.datetime64 this is easiest.
+                #   datetime.datetime and speaks numpy.datetime64
+                #   this is the easiest thing to do
                 lastTimedt = pd.Timestamp(lastTime).to_pydatetime(warn=False)
 
                 # The server timezone has been set (during its setup) to UTC;
@@ -219,7 +222,7 @@ def make_plot(doc):
                 #   apparently now must be punished
                 storageTZ = timezone('UTC')
                 lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
-                print("Converted %s to %s" % (lastTime, lastTimedt))
+                # print("Converted %s to %s" % (lastTime, lastTimedt))
             else:
                 print("IDK WTF BBQ")
                 print("Unexpected timestamp type:", type(lastTime))
@@ -230,10 +233,8 @@ def make_plot(doc):
             pdata.update({qtag: qdata[qtag]})
 
         # Update the data references; these are actual DataFrame objects btw.
-        r = pdata['q_Rywrs']
+        r = pdata['q_dctweather']
         r2 = pdata['q_mounttemp']
-
-        print("Selecting only data found since %s" % (lastTimedt))
 
         # Now select only the data in those frames since lastTime
         #   But! Of course there's another caveat.
@@ -245,9 +246,9 @@ def make_plot(doc):
         ripydt = r.index.to_pydatetime()
         r2ipydt = r2.index.to_pydatetime()
 
-        print("Last time in r: %s" % (ripydt[-1]))
-        print("Last time in r2: %s" % (r2ipydt[-1]))
-        print("Last time in CDS: %s" % (lastTimedt))
+        print("Last in CDS: %s" % (lastTimedt))
+        print("Last in r  : %s" % (ripydt[-1]))
+        print("Last in r2 : %s" % (r2ipydt[-1]))
 
         rTimeSearchMask = ripydt > lastTimedt
         r2TimeSearchMask = r2ipydt > lastTimedt
@@ -325,7 +326,13 @@ def make_plot(doc):
             cds.stream(cf, rollover=15000)
             print("New data streamed; %d row(s) added" % (numRows))
 
+        # Manually override the X range so we get the windowing I prefer
+        fig.x_range.start = timeNow-tWindow
+        fig.x_range.end = timeNow+tEndPad
+
+        print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
         print("")
+
 
     doc.add_periodic_callback(grabNew, 5000)
 
