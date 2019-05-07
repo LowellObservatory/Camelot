@@ -43,43 +43,47 @@ def assembleFacSumTCS(indat):
 
     # CURRENT coords
     cRA = bplot.deshred([indat['q_tcssv'].cRA_h,
-                        indat['q_tcssv'].cRA_m,
-                        indat['q_tcssv'].cRA_s], delim=":", lastIdx=tcsLastIdx,
+                         indat['q_tcssv'].cRA_m,
+                         indat['q_tcssv'].cRA_s],
+                        delim=":", lastIdx=tcsLastIdx,
                         name="cRA", comptime=now)
     cDec = bplot.deshred([indat['q_tcssv'].cDec_d,
-                         indat['q_tcssv'].cDec_m,
-                         indat['q_tcssv'].cDec_s], delim=":",
-                         lastIdx=tcsLastIdx,
+                          indat['q_tcssv'].cDec_m,
+                          indat['q_tcssv'].cDec_s],
+                         delim=":", lastIdx=tcsLastIdx,
                          name="cDec", comptime=now)
     cEpoch = bplot.deshred([indat['q_tcssv'].cEqP,
-                           indat['q_tcssv'].cEqY,
-                           indat['q_tcssv'].cFrame], delim="",
-                           lastIdx=tcsLastIdx,
+                            indat['q_tcssv'].cEqY,
+                            indat['q_tcssv'].cFrame],
+                           delim="", lastIdx=tcsLastIdx,
                            name="cEpoch", comptime=now)
     # DEMAND coords
     dRA = bplot.deshred([indat['q_tcssv'].dRA_h,
-                   indat['q_tcssv'].dRA_m,
-                   indat['q_tcssv'].dRA_s], delim=":", lastIdx=tcsLastIdx,
-                  name="dRA", comptime=now)
+                         indat['q_tcssv'].dRA_m,
+                         indat['q_tcssv'].dRA_s],
+                        delim=":", lastIdx=tcsLastIdx,
+                        name="dRA", comptime=now)
     dDec = bplot.deshred([indat['q_tcssv'].dDec_d,
-                    indat['q_tcssv'].dDec_m,
-                    indat['q_tcssv'].dDec_s], delim=":", lastIdx=tcsLastIdx,
-                   name="dDec", comptime=now)
+                          indat['q_tcssv'].dDec_m,
+                          indat['q_tcssv'].dDec_s],
+                         delim=":", lastIdx=tcsLastIdx,
+                         name="dDec", comptime=now)
     dEpoch = bplot.deshred([indat['q_tcssv'].dEqP,
-                      indat['q_tcssv'].dEqY,
-                      indat['q_tcssv'].dFrame], delim="", lastIdx=tcsLastIdx,
-                     name="dEpoch", comptime=now)
+                            indat['q_tcssv'].dEqY,
+                            indat['q_tcssv'].dFrame],
+                           delim="", lastIdx=tcsLastIdx,
+                           name="dEpoch", comptime=now)
 
-    airmass = bplot.getLast(indat['q_tcssv'].Airmass, lastIdx=tcsLastIdx,
-                            comptime=now)
-    targname = bplot.getLast(indat['q_tcssv'].TargetName, lastIdx=tcsLastIdx,
-                             comptime=now)
-    guidemode = bplot.getLast(indat['q_tcssv'].GuideMode, lastIdx=tcsLastIdx,
-                              comptime=now)
-    sundist = bplot.getLast(indat['q_tcssv'].SunDistance, lastIdx=tcsLastIdx,
-                            comptime=now)
-    moondist = bplot.getLast(indat['q_tcssv'].MoonDistance, lastIdx=tcsLastIdx,
-                             comptime=now)
+    airmass = bplot.getLast(indat['q_tcssv'].Airmass,
+                            lastIdx=tcsLastIdx, comptime=now)
+    targname = bplot.getLast(indat['q_tcssv'].TargetName,
+                             lastIdx=tcsLastIdx, comptime=now)
+    guidemode = bplot.getLast(indat['q_tcssv'].GuideMode,
+                              lastIdx=tcsLastIdx, comptime=now)
+    sundist = bplot.getLast(indat['q_tcssv'].SunDistance,
+                            lastIdx=tcsLastIdx, comptime=now)
+    moondist = bplot.getLast(indat['q_tcssv'].MoonDistance,
+                             lastIdx=tcsLastIdx, comptime=now)
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there

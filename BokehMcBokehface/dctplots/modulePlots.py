@@ -25,9 +25,7 @@ import numpy as np
 import pandas as pd
 from pytz import timezone
 
-from bokeh.models import Range1d, \
-                         HoverTool, Legend, LegendItem, \
-                         DataTable, TableColumn
+from bokeh.models import Range1d, HoverTool, Legend, LegendItem
 from bokeh.plotting import figure, output_file, ColumnDataSource
 
 
