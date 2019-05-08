@@ -25,8 +25,8 @@ import numpy as np
 import pandas as pd
 from pytz import timezone
 
-from bokeh.models import Range1d, HoverTool, Legend, LegendItem
-from bokeh.plotting import figure, output_file, ColumnDataSource
+from bokeh.plotting import figure, ColumnDataSource
+from bokeh.models import DataRange1d, LinearAxis, Legend, LegendItem, HoverTool
 
 
 class valJudgement(object):
@@ -54,6 +54,41 @@ class valJudgement(object):
             self.tooOld = False
 
 
+def newDataCallback(cds, cols, nf, lastTimedt, y1lim):
+    """
+    """
+    if nf.size == 0:
+        print("No new data.")
+        mds2 = {}
+    else:
+        # At this point, there might be a NaN in the column(s) from rf2.
+        #   Since we stream only the NEW values, we need to be nice to
+        #   ourselves and fill in the prior value for those columns so
+        #   the tooltips function and don't spaz out. So get the final
+        #   values manually and then fill them into those columns.
+        cfills = {}
+        for col in cols:
+            fillVal = getLastVal(cds, col)
+            cfills.update({col: fillVal})
+
+        # Fill in our column holes. If there are *multiple* temporal holes,
+        #   it'll look bonkers because there's only one fill value.
+        nf.fillna(value=cfills, inplace=True)
+
+        # Create the patches for the *new* data only
+        nix, niy = makeNewPatches(nf, y1lim, lastTimedt)
+
+        # It is VITALLY important that the length of all of these
+        #   is the same! If it's not, it'll slowly go bonkers.
+        #
+        # Could add a check to make sure here, but I'll ride dirty for now.
+        mds2 = dict(index=nf.index, pix=nix, piy=niy)
+        for col in cols:
+            mds2.update({col: getattr(nf, col)})
+
+    return mds2
+
+
 def convertTimestamp(lastTime, tz='UTC'):
     """
     """
@@ -73,7 +108,7 @@ def convertTimestamp(lastTime, tz='UTC'):
     except AttributeError:
         # This means it wasn't a Timestamp object, and it doesn't have
         #   the method that we want/desire.
-        if type(lastTime) == np.datetime64:
+        if isinstance(lastTime, np.datetime64):
             # A bit silly, but since pandas Timestamp is a subclass of
             #   datetime.datetime and speaks numpy.datetime64
             #   this is the easiest thing to do
@@ -194,7 +229,7 @@ def checkForEmptyData(indat):
     return abort
 
 
-def commonPlot(ldict, height=None, width=None):
+def commonPlot(r, ldict, y1lim, dset, height=None, width=None, y2=None):
     """
     """
     tools = "pan, wheel_zoom, box_zoom, crosshair, reset, save"
@@ -213,7 +248,78 @@ def commonPlot(ldict, height=None, width=None):
     if width is not None:
         p.plot_width = width
 
-    return p
+    if y2 is not None:
+        p.extra_y_ranges = y2
+        p.add_layout(LinearAxis(y_range_name="y2",
+                                axis_label=ldict['y2label']), 'right')
+
+        # Annoyingly, the main y-axis still autoscales if there is a
+        #   second y-axis. Setting these means that the axis WON'T
+        #   autoscale until they're set back to None
+        p.y_range = DataRange1d(start=y1lim[0], end=y1lim[1])
+
+    p.x_range.follow = "end"
+    p.x_range.range_padding = 0.1
+    p.x_range.range_padding_units = 'percent'
+
+    # Hack! But it works. Need to do this *before* you create cds below!
+    #   Includes a special flag (first=True) to pad the beginning so all
+    #   the columns in the final ColumnDataSource are the same length
+    pix, piy = makePatches(r.index, y1lim, first=True)
+
+    # The "master" data source to be used for plotting.
+    #   Generate it via the column names in the now-merged 'r' DataFrame
+    #   Start with the 'index' 'pix' and 'piy' since they're always those names
+    mds = dict(index=r.index, pix=pix, piy=piy)
+
+    # Start our plot source
+    cds = ColumnDataSource(mds)
+
+    # Now loop over the rest of our columns to fill it out, plotting as we go
+    cols = r.columns
+    lineSet = []
+    legendItems = []
+    for i, col in enumerate(cols):
+        # Add our data to the cds
+        cds.add(getattr(r, col), name=col)
+
+        # Make the actual line plot object
+        # TODO: Make this search in a given "y2" axis list
+        if col.lower() == "humidity":
+            lineObj, _ = plotLineWithPoints(p, cds, col, dset[i],
+                                            yrname="y2")
+        else:
+            lineObj, _ = plotLineWithPoints(p, cds, col, dset[i])
+
+        lineSet.append(lineObj)
+
+        # Now make it's corresponding legend item
+        legendObj = LegendItem(label=col, renderers=[lineObj])
+        legendItems.append(legendObj)
+
+    legend = Legend(items=legendItems,
+                    location="bottom_center",
+                    orientation='horizontal', spacing=15)
+    p.add_layout(legend, 'below')
+
+    # Customize the active tools
+    p.toolbar.autohide = True
+
+    # HACK HACK HACK HACK HACK
+    #   Apply the patches to carry the tooltips
+    #
+    # Shouldn't I just stream this instead of pix/nix and piy/niy ???
+    #
+    simg = p.patches('pix', 'piy', source=cds,
+                     fill_color=None,
+                     fill_alpha=0.0,
+                     line_color=None)
+
+    # This will also create the tooltips for each of the entries in cols
+    ht = createHoverTool(simg, cols)
+    p.add_tools(ht)
+
+    return p, cds, cols
 
 
 def createHoverTool(simg, cols):
@@ -356,82 +462,3 @@ def plotLineWithPoints(p, cds, sname, color,
                       alpha=0., hover_alpha=1., hover_color=hcolor)
 
     return l, s
-
-
-def makeWindPlots(indat, cwheel, outfile=None):
-    """
-    """
-
-    y1lim = [0, 15]
-
-    r = indat['q_wrs']
-    output_file(outfile)
-
-    ldict = {'title': "WRS Wind Information",
-             'xlabel': "Time (UTC)",
-             'y1label': "Wind Speed (m/s)"}
-
-    p = commonPlot(r, ldict)
-    timeNow = dt.datetime.utcnow()
-    tWindow = dt.timedelta(hours=24)
-
-    if y1lim is None:
-        y1lim = [r.WindSpeedMin.values.min,
-                 r.WindSpeedMax.values.max]
-    p.y_range = Range1d(start=y1lim[0], end=y1lim[1])
-    p.x_range = Range1d(start=timeNow-tWindow, end=timeNow)
-
-    # Hack! But it works. Need to do this *before* you create cds below!
-    ix, iy = makePatches(r, y1lim)
-
-    # The "master" data source to be used for plotting.
-    #    I wish there was a way of abstracting this but I'm not *quite*
-    #    clever enough with a baby imminent. Make the dict in a loop using
-    #    the data keys? I dunno. "Future Work" for sure.
-    mds = dict(index=r.index,
-               WindSpeed=r.WindSpeed,
-               WindSpeedMin=r.WindSpeedMin,
-               WindSpeedMax=r.WindSpeedMax,
-               WindDir=r.WindDir,
-               ix=ix, iy=iy)
-    cds = ColumnDataSource(mds)
-
-    # Make the plots/lines!
-    l1, _ = plotLineWithPoints(p, cds, "WindSpeed", cwheel[0])
-    l2, _ = plotLineWithPoints(p, cds, "WindSpeedMin", cwheel[1])
-    l3, _ = plotLineWithPoints(p, cds, "WindSpeedMax", cwheel[2])
-
-    li1 = LegendItem(label="WindSpeed", renderers=[l1])
-    li2 = LegendItem(label="WindSpeedMin", renderers=[l2])
-    li3 = LegendItem(label="WindSpeedMax", renderers=[l3])
-    legend = Legend(items=[li1, li2, li3], location='top_left',
-                    orientation='horizontal', spacing=15)
-    p.add_layout(legend)
-
-    # HACK HACK HACK HACK HACK
-    #   Apply the patches to carry the tooltips
-    simg = p.patches('ix', 'iy', source=cds,
-                     fill_color=None,
-                     fill_alpha=0.0,
-                     line_color=None)
-
-    # Make the hovertool only follow the patches (still a hack)
-    htline = simg
-
-    # Customize the active tools
-    p.toolbar.autohide = True
-
-    ht = HoverTool()
-    ht.tooltips = [("Time", "@index{%F %T}"),
-                   ("WindSpeed", "@WindSpeed{0.0} m/s"),
-                   ("WindSpeedMin", "@WindSpeedMin{0.0} m/s"),
-                   ("WindSpeedMax", "@WindSpeedMax{0.0} m/s")
-                   ]
-    ht.formatters = {'index': 'datetime'}
-    ht.show_arrow = False
-    ht.point_policy = 'follow_mouse'
-    ht.line_policy = 'nearest'
-    ht.renderers = [htline]
-    p.add_tools(ht)
-
-    return p

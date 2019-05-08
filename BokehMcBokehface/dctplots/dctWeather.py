@@ -18,9 +18,7 @@ from __future__ import division, print_function, absolute_import
 import datetime as dt
 from collections import OrderedDict
 
-from bokeh.plotting import ColumnDataSource
-from bokeh.models import DataRange1d, LinearAxis, \
-                         Legend, LegendItem
+from bokeh.models import DataRange1d
 
 from . import modulePlots as bplot
 
@@ -120,7 +118,6 @@ def make_plot(doc):
              'xlabel': "Time (UTC)",
              'y1label': "Temperature (C)",
              'y2label': "Humidity (%)"}
-    fig = bplot.commonPlot(ldict, height=400, width=600)
 
     # Since we haven't plotted anything yet, we don't have a decent idea
     #   of the bounds that we make our patches over. So just do that manually.
@@ -150,81 +147,15 @@ def make_plot(doc):
                  r.Humidity.max(skipna=True)]
         y2lim = [y2lim[0]*(1.-npad), y2lim[1]*(1.+npad)]
 
-    fig.extra_y_ranges = {"y2": DataRange1d(start=y2lim[0], end=y2lim[1])}
-    fig.add_layout(LinearAxis(y_range_name="y2",
-                              axis_label=ldict['y2label']), 'right')
+    y2 = {"y2": DataRange1d(start=y2lim[0], end=y2lim[1])}
 
-    # Annoyingly, the main y-axis still autoscales to the second y-axis
-    #   Setting these means that the axis WON'T autoscale until they're set
-    #   back to None
-    fig.y_range = DataRange1d(start=y1lim[0], end=y1lim[1])
+    # This does everything else. Loops over the columns in the 'r' DataFrame
+    #   and creates a ColumnDataSource for the resulting figure
+    fig, cds, cols = bplot.commonPlot(r, ldict, y1lim, dset,
+                                      height=400, width=600, y2=y2)
 
-    #
-    # NOTE: At this point, the *rest* of the code is more or less
-    #   completely generic and should be function-ed out!
-    #
-
-    fig.x_range.follow = "end"
-    fig.x_range.range_padding = 0.1
-    fig.x_range.range_padding_units = 'percent'
-
-    # Hack! But it works. Need to do this *before* you create cds below!
-    #   Includes a special flag (first=True) to pad the beginning so all
-    #   the columns in the final ColumnDataSource are the same length
-    pix, piy = bplot.makePatches(r.index, y1lim, first=True)
-
-    # The "master" data source to be used for plotting.
-    #   Generate it via the column names in the now-merged 'r' DataFrame
-    #   Start with the 'index' 'pix' and 'piy' since they're always those names
-    mds = dict(index=r.index, pix=pix, piy=piy)
-
-    # Start our plot source
-    cds = ColumnDataSource(mds)
-
-    # Now loop over the rest of our columns to fill it out, plotting as we go
-    cols = r.columns
-    lineSet = []
-    legendItems = []
-    for i, col in enumerate(cols):
-        # Add our data to the cds
-        cds.add(getattr(r, col), name=col)
-
-        # Make the actual line plot object
-        if col.lower() == "humidity":
-            lineObj, _ = bplot.plotLineWithPoints(fig, cds, col, dset[i],
-                                                  yrname="y2")
-        else:
-            lineObj, _ = bplot.plotLineWithPoints(fig, cds, col, dset[i])
-        lineSet.append(lineObj)
-
-        # Now make it's corresponding legend item
-        legendObj = LegendItem(label=col, renderers=[lineObj])
-        legendItems.append(legendObj)
-
-    legend = Legend(items=legendItems,
-                    location="bottom_center",
-                    orientation='horizontal', spacing=15)
-    fig.add_layout(legend, 'below')
-
-    # Customize the active tools
-    fig.toolbar.autohide = True
-
-    # HACK HACK HACK HACK HACK
-    #   Apply the patches to carry the tooltips
-    #
-    # Shouldn't I just stream this instead of pix/nix and piy/niy ???
-    #
-    simg = fig.patches('pix', 'piy', source=cds,
-                       fill_color=None,
-                       fill_alpha=0.0,
-                       line_color=None)
-
-    # This will also create the tooltips for each of the entries in cols
-    ht = bplot.createHoverTool(simg, cols)
-    fig.add_tools(ht)
-
-    #####
-
+    # At this point, we're done! Just apply the theme and attach the figure
+    #   to the rest of the document, then setup the update callback
     doc.theme = theme
     doc.title = m.title
     doc.add_root(fig)
@@ -248,39 +179,15 @@ def make_plot(doc):
         #   after the given time
         nf = dataGatherer(m, qdata, timeFilter=lastTimedt)
 
-        if nf.size == 0:
-            print("No new data.")
-        else:
-            # At this point, there might be a NaN in the column(s) from rf2.
-            #   Since we stream only the NEW values, we need to be nice to
-            #   ourselves and fill in the prior value for those columns so
-            #   the tooltips function and don't spaz out. So get the final
-            #   values manually and then fill them into those columns.
-            cfills = {}
-            for col in cols:
-                fillVal = bplot.getLastVal(cds, col)
-                cfills.update({col: fillVal})
+        # Check the data for updates, and downselect to just the newest
+        mds2 = bplot.newDataCallback(cds, cols, nf, lastTimedt, y1lim)
 
-            # Fill in our column holes. If there are *multiple* temporal holes,
-            #   it'll look bonkers because there's only one fill value.
-            nf.fillna(value=cfills, inplace=True)
+        # Actually update the data
+        cds.stream(mds2, rollover=15000)
+        print("New data streamed; %d row(s) added" % (nf.shape[0]))
 
-            # Create the patches for the *new* data only
-            nix, niy = bplot.makeNewPatches(nf, y1lim, lastTimedt)
-
-            # It is VITALLY important that the length of all of these
-            #   is the same! If it's not, it'll slowly go bonkers.
-            #
-            # Could add a check to make sure here, but I'll ride dirty for now.
-            mds2 = dict(index=nf.index, pix=nix, piy=niy)
-            for col in cols:
-                mds2.update({col: getattr(nf, col)})
-
-            cds.stream(mds2, rollover=15000)
-            print("New data streamed; %d row(s) added" % (nf.shape[0]))
-
-        print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
-        print("")
+    print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
+    print("")
 
     doc.add_periodic_callback(grabNew, 5000)
 
