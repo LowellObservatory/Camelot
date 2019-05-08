@@ -183,8 +183,9 @@ def make_plot(doc):
         mds2 = bplot.newDataCallback(cds, cols, nf, lastTimedt, y1lim)
 
         # Actually update the data
-        cds.stream(mds2, rollover=15000)
-        print("New data streamed; %d row(s) added" % (nf.shape[0]))
+        if mds2 != {}:
+            cds.stream(mds2, rollover=15000)
+            print("New data streamed; %d row(s) added" % (nf.shape[0]))
 
     print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
     print("")
