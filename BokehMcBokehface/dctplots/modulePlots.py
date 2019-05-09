@@ -36,8 +36,7 @@ class valJudgement(object):
         self.timestamp = None
         self.tooOld = False
 
-    def judgeAge(self, maxage=None,
-                 comptime=None):
+    def judgeAge(self, maxage=None, comptime=None):
         # Need to put everything into Numpy datetime64/timedelta64 objects
         #   to allow easier interoperations
         if maxage is None:
@@ -120,9 +119,19 @@ def convertTimestamp(lastTime, tz='UTC'):
             #   apparently now must be punished
             lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
             # print("Converted %s to %s" % (lastTime, lastTimedt))
+        if isinstance(lastTime, str):
+            # Ok, easy enough, it's a datetime stamp in string form
+            try:
+                lastTimedt = dt.datetime.strptime(lastTime,
+                                                  "%Y-%m-%d %H:%M:%S.%f %Z")
+                lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
+            except Exception:
+                print("BAD TIMESTAMP FORMAT!")
+                raise NotImplementedError
         else:
             print("IDK WTF BBQ")
             print("Unexpected timestamp type:", type(lastTime))
+            raise NotImplementedError
 
     return lastTimedt
 

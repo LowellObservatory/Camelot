@@ -29,7 +29,7 @@ import dctplots.confHerder as ch
 import dctplots.dbQueries as dbq
 import dctplots.colorWheelies as cwheels
 
-from dctplots import dctWeather, instrumentTelem
+from dctplots import dctWeather, instrumentTelem, facsums
 
 
 # Make sure all the endpoints work from the same base document.
@@ -111,8 +111,16 @@ def configServer():
     lmiTempFunc = FunctionHandler(instrumentTelem.make_plot)
     lmiTempApp = Application(lmiTempFunc)
 
+    facsumTCSFunc = FunctionHandler(facsums.makeFacSum_TCS)
+    facsumTCSApp = Application(facsumTCSFunc)
+
+    facsumLPIFunc = FunctionHandler(facsums.makeFacSum_LPI)
+    facsumLPIApp = Application(facsumLPIFunc)
+
     apps = {'/dctweather': dctWeatherApp,
-            '/lmitemps': lmiTempApp}
+            '/lmitemps': lmiTempApp,
+            '/facsum_tcs': facsumTCSApp,
+            '/facsum_lpi': facsumLPIApp}
 
     print("Starting bokeh server...")
     server = Server(apps, port=5000,
@@ -123,6 +131,7 @@ def configServer():
                                             'nightwatch.lowell.edu'])
 
     return server
+
 
 if __name__ == "__main__":
     # Can spin these off to configParser things later

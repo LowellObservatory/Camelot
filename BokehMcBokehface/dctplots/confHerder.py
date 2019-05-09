@@ -152,6 +152,7 @@ def alignDBConfig(queries):
             dbq = assignConf(databaseQuery(), queries[sec])
             # Setting this outside of __init__ is fine with me
             #   since we're really just renaming for convienence elsewhere
+            #   (so I remember that I can ignore this in pylint)
             dbq.key = sec
             try:
                 dbkey = queries[sec]['db']
@@ -167,7 +168,8 @@ def alignDBConfig(queries):
 def groupConfFiles(queries, modules):
     """
     """
-    loopableSet = []
+    moduleDict = {}
+    # loopableSet = []
     allQueries = []
     for sect in modules.keys():
         # Parse the conf file section
@@ -184,7 +186,8 @@ def groupConfFiles(queries, modules):
 
         # Did we survive?
         if mod is not None:
-            loopableSet.append(mod)
+            moduleDict.update({sect: mod})
+            # loopableSet.append(mod)
             allQueries += mod.queries.values()
 
         # Turn the unique set of queries into something a little easier to
@@ -194,7 +197,7 @@ def groupConfFiles(queries, modules):
         for q in qS:
             qDict.update({q.key: q})
 
-    return loopableSet, qDict
+    return moduleDict, qDict
 
 
 def parser(qconff, mconff):
@@ -209,7 +212,7 @@ def parser(qconff, mconff):
     # Parse the text file and check if any sections are disabled
     ms = parseConfFile(mconff, enableCheck=True)
 
-    # Now combine the moduels and queries into stuff we can itterate over
+    # Now combine the modules and queries into stuff we can itterate over
     modules, queries = groupConfFiles(qs, ms)
 
     # 'modules' is now a list of moduleConfig objects. If any of the entries

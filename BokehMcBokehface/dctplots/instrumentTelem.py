@@ -26,7 +26,7 @@ def dataGatherer(m, qdata, timeFilter=None, fillNull=True, debug=True):
     Instrument/plot/query specific contortions needed to make the
     bulk of the plot code generic and abstract.  I feel ok
     hardcoding stuff in here at least, since this will always be namespace
-    protected and unambigious (instrumentTelem.dataGatherer).
+    protected and unambigious (e.g. instrumentTelem.dataGatherer).
     """
     pdata = OrderedDict()
     for qtag in m.queries.keys():
@@ -96,11 +96,14 @@ def make_plot(doc):
     dset = plotState.colors
     theme = plotState.theme
 
+    #
+    # NOTE: Should clean this up or stuff it all into dataGatherer
+    #
     # Hard coding the access/dict key for the data needed for this plot
-    #   ... no, I'm not happy about this either.  This is pretty fugly.
-    # Ultimately, I need to combine mods and qdata into a single dict
-    #   and select based on that.  But that can come later.
-    m = mods[2]
+    #   Cringe-worthy but tolerable. This MUST match what is set in the
+    #   'modules.conf' file otherwise it'll blow up.
+    moduleKey = 'instrument_Temps'
+    m = mods[moduleKey]
 
     print("Serving %s" % (m.title))
 

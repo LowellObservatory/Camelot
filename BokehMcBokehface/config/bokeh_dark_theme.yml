@@ -32,3 +32,12 @@ attrs:
         line_alpha: 0.75
     BoxZoomTool:
         dimensions: 'width'
+    DataTable:
+        background: '#262629'
+        index_header: ''
+        reorderable: False
+        sortable: False
+        width: 400
+
+    #     border_fill_color: '#262629'
+    #     outline_line_color: '#4a4a4c'
