@@ -111,7 +111,8 @@ def convertTimestamp(lastTime, tz='UTC'):
             # A bit silly, but since pandas Timestamp is a subclass of
             #   datetime.datetime and speaks numpy.datetime64
             #   this is the easiest thing to do
-            lastTimedt = pd.Timestamp(lastTime).to_pydatetime(warn=False)
+            lastTimeTimestamp = pd.Timestamp(lastTime)
+            lastTimedt = lastTimeTimestamp.to_pydatetime(warn=False)
 
             # The server timezone has been set (during its setup) to UTC;
             #   we need to specifically add that to avoid timezone
@@ -119,7 +120,7 @@ def convertTimestamp(lastTime, tz='UTC'):
             #   apparently now must be punished
             lastTimedt = lastTimedt.replace(tzinfo=storageTZ)
             # print("Converted %s to %s" % (lastTime, lastTimedt))
-        if isinstance(lastTime, str):
+        elif isinstance(lastTime, str):
             # Ok, easy enough, it's a datetime stamp in string form
             try:
                 lastTimedt = dt.datetime.strptime(lastTime,
