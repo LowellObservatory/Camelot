@@ -100,19 +100,39 @@ def dataGatherer_TCS(m, qdata):
     sundist = bplot.getLast(r.SunDistance, comptime=now)
     moondist = bplot.getLast(r.MoonDistance, comptime=now)
 
+    # Now snag our pyephem ephemeris information
+    e = qdata['ephemera']
+    sunrise = bplot.getLast(e.sunrise, label='Sunrise', comptime=now)
+    sunset = bplot.getLast(e.sunset, label='Sunset', comptime=now)
+
+    nsunrise = bplot.getLast(e.nextsunrise, label='Next Sunrise', comptime=now)
+    nsunset = bplot.getLast(e.nextsunset, label='Next Sunset', comptime=now)
+
+    sunalt = bplot.getLast(e.sun_dms, label='Sun Altitude', comptime=now)
+    moonalt = bplot.getLast(e.moon_dms, label='Moon Altitude', comptime=now)
+    moonphase = bplot.getLast(e.moonphase*100., label='Moon Phase', comptime=now)
+
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
     tableDat = [targname, lst, cHA,
                 cRA, cDec, cFrame,
                 dRA, dDec, dFrame,
                 airmass, guidemode,
-                sundist, moondist]
+                sundist, moondist,
+                sunrise, sunset,
+                nsunrise, nsunset,
+                sunalt, moonalt, moonphase]
 
     values = []
     labels = []
     tooold = []
     for each in tableDat:
-        values.append(each.value)
+        if each.label.lower().find("rise") != -1 or\
+           each.label.lower().find("set") != -1:
+            values.append(each.value.strftime("%Y-%m-%d %H:%M:%S %Z"))
+        else:
+            values.append(each.value)
+
         labels.append(each.label)
         tooold.append(each.tooOld)
 
@@ -383,7 +403,7 @@ def makeFacSum_TCS(doc):
 
         # Let's just be dumb and replace everything all at once
         ncds = dataGatherer_TCS(m, qdata)
-        cds.stream(ncds.data, rollover=13)
+        cds.stream(ncds.data, rollover=20)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)
