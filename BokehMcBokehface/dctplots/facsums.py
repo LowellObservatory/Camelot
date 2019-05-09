@@ -40,113 +40,6 @@ def dataGatherer_TCS(m, qdata, timeFilter=None, fillNull=True, debug=True):
     # Get the keys that define the input dataset
     r = pdata['q_tcssv']
 
-    if timeFilter is None:
-        rj = r
-
-        if fillNull is True:
-            # Make sure that we don't have too awkward of a dataframe
-            #   by filling gaps. This has the benefit of making the
-            #   tooltip patches WAY easier to handle.
-            rj.fillna(method='ffill', inplace=True)
-    else:
-        # Now select only the data in those frames since lastTime
-        #   But! Of course there's another caveat.
-        # lastTimedt could be a dt.datetime object, but r.index has a type of
-        #   Timestamp which is really a np.datetime64 wrapper. So we need
-        #   to put them on the same page for actual comparisons.
-        # NOTE: The logic here was unrolled for debugging timestamp crap.
-        #   it can be rolled up again in the next version.
-        ripydt = r.index.to_pydatetime()
-
-        if debug is True:
-            print("Last in CDS: %s" % (timeFilter))
-            print("Last in r  : %s" % (ripydt[-1]))
-
-        rTimeSearchMask = ripydt > timeFilter
-
-        # Need .loc since we're really filtering by label
-        rj = r.loc[rTimeSearchMask]
-
-    return rj
-
-
-def dataGatherer_LPI(m, qdata, timeFilter=None, fillNull=True, debug=True):
-    """
-    Instrument/plot/query specific contortions needed to make the
-    bulk of the plot code generic and abstract.  I feel ok
-    hardcoding stuff in here at least, since this will always be namespace
-    protected and unambigious (e.g. instrumentTelem.dataGatherer).
-    """
-    pdata = OrderedDict()
-    for qtag in m.queries.keys():
-        pdata.update({qtag: qdata[qtag]})
-
-    # Get the keys that define the input dataset
-    r = pdata['q_tcssv']
-    r2 = pdata['q_tcslois']
-    r3 = pdata['q_cubeinstcover']
-    r4 = pdata['q_cubefolds']
-
-    if timeFilter is None:
-        # Join them so the timestamps are sorted for us nicely, and nan's
-        #   put into the gaps so we don't get all confused later on
-        rj = r.join(r2, how='outer')
-        rj = rj.join(r3, how='outer')
-        rj = rj.join(r4, how='outer')
-
-        if fillNull is True:
-            # Make sure that we don't have too awkward of a dataframe
-            #   by filling gaps. This has the benefit of making the
-            #   tooltip patches WAY easier to handle.
-            rj.fillna(method='ffill', inplace=True)
-    else:
-        # Now select only the data in those frames since lastTime
-        #   But! Of course there's another caveat.
-        # lastTimedt could be a dt.datetime object, but r.index has a type of
-        #   Timestamp which is really a np.datetime64 wrapper. So we need
-        #   to put them on the same page for actual comparisons.
-        # NOTE: The logic here was unrolled for debugging timestamp crap.
-        #   it can be rolled up again in the next version.
-        ripydt = r.index.to_pydatetime()
-        r2ipydt = r2.index.to_pydatetime()
-        r3ipydt = r3.index.to_pydatetime()
-        r4ipydt = r4.index.to_pydatetime()
-
-        if debug is True:
-            print("Last in CDS: %s" % (timeFilter))
-            print("Last in r  : %s" % (ripydt[-1]))
-            print("Last in r2 : %s" % (r2ipydt[-1]))
-            print("Last in r3 : %s" % (r3ipydt[-1]))
-            print("Last in r4 : %s" % (r4ipydt[-1]))
-
-        rTimeSearchMask = ripydt > timeFilter
-        r2TimeSearchMask = r2ipydt > timeFilter
-        r3TimeSearchMask = r3ipydt > timeFilter
-        r4TimeSearchMask = r4ipydt > timeFilter
-
-        # Need .loc since we're really filtering by label
-        rf = r.loc[rTimeSearchMask]
-        rf2 = r2.loc[r2TimeSearchMask]
-        rf3 = r3.loc[r3TimeSearchMask]
-        rf4 = r4.loc[r4TimeSearchMask]
-
-        # Now join the dataframes into one single one that we can stream.
-        #   Remember to use 'outer' otherwise information will be
-        #   mutilated since the two dataframes are on two different
-        #   time indicies!
-        rj = rf.join(rf2, how='outer')
-        rj = rj.join(rf3, how='outer')
-        rj = rj.join(rf4, how='outer')
-
-        if fillNull is True:
-            rj.fillna(method='ffill', inplace=True)
-
-    return rj
-
-
-def assembleFacSumTCS(r):
-    """
-    """
     # Common "now" time to compare everything against
     now = np.datetime64(dt.datetime.utcnow())
 
@@ -155,24 +48,20 @@ def assembleFacSumTCS(r):
     #
     # 'deshred' will automatically take the last entry and return a
     #   non-annoying version with its timestamp for later display.
-    #
-    # First, get the last valid index in the q_tcssv dataframe and use that
-    #   for all the TCS queries to make sure it's at least consistent
-    tcsLastIdx = r.cRA_h.index[-1]
 
     # CURRENT coords
     cRA = bplot.deshred([r.cRA_h,
                          r.cRA_m,
                          r.cRA_s],
-                        delim=":", lastIdx=tcsLastIdx,
+                        delim=":",
                         name="cRA", comptime=now)
     cDec = bplot.deshred([r.cDec_d,
                           r.cDec_m,
                           r.cDec_s],
-                         delim=":", lastIdx=tcsLastIdx,
+                         delim=":",
                          name="cDec", comptime=now)
 
-    cFrame = bplot.getLast(r.cFrame, lastIdx=tcsLastIdx, comptime=now)
+    cFrame = bplot.getLast(r.cFrame, comptime=now)
     # cEpoch = bplot.deshred([r.cEqP,
     #                         r.cEqY,
     #                         r.cFrame],
@@ -183,35 +72,30 @@ def assembleFacSumTCS(r):
     dRA = bplot.deshred([r.dRA_h,
                          r.dRA_m,
                          r.dRA_s],
-                        delim=":", lastIdx=tcsLastIdx,
+                        delim=":",
                         name="dRA", comptime=now)
     dDec = bplot.deshred([r.dDec_d,
                           r.dDec_m,
                           r.dDec_s],
-                         delim=":", lastIdx=tcsLastIdx,
+                         delim=":",
                          name="dDec", comptime=now)
 
-    dFrame = cFrame = bplot.getLast(r.dFrame, lastIdx=tcsLastIdx, comptime=now)
+    dFrame = cFrame = bplot.getLast(r.dFrame, comptime=now)
     # dEpoch = bplot.deshred([r.dEqP,
     #                         r.dEqY,
     #                         r.dFrame],
     #                        delim="", lastIdx=tcsLastIdx,
     #                        name="dEpoch", comptime=now)
 
-    airmass = bplot.getLast(r.Airmass,
-                            lastIdx=tcsLastIdx, comptime=now)
-    targname = bplot.getLast(r.TargetName,
-                             lastIdx=tcsLastIdx, comptime=now)
-    guidemode = bplot.getLast(r.GuideMode,
-                              lastIdx=tcsLastIdx, comptime=now)
-    sundist = bplot.getLast(r.SunDistance,
-                            lastIdx=tcsLastIdx, comptime=now)
-    moondist = bplot.getLast(r.MoonDistance,
-                             lastIdx=tcsLastIdx, comptime=now)
+    airmass = bplot.getLast(r.Airmass, comptime=now)
+    targname = bplot.getLast(r.TargetName, comptime=now)
+    guidemode = bplot.getLast(r.GuideMode, comptime=now)
+    sundist = bplot.getLast(r.SunDistance, comptime=now)
+    moondist = bplot.getLast(r.MoonDistance, comptime=now)
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
-    tableDat = [tcsLastIdx, targname,
+    tableDat = [targname,
                 # cRA, cDec, cEpoch,
                 # dRA, dDec, dEpoch,
                 cRA, cDec, cFrame,
@@ -223,18 +107,9 @@ def assembleFacSumTCS(r):
     labels = []
     tooold = []
     for i, each in enumerate(tableDat):
-        if i == 0:
-            values.append(each.strftime("%Y-%m-%d %H:%M:%S.%f %Z"))
-            labels.append("DataTimestamp")
-            tooold.append(None)
-        else:
-            values.append(each.value)
-            labels.append(each.label)
-
-        if i > 0:
-            # Rather than put this in each elif, I'll just do it here.
-            #   Add in our age comparison column, for color/styling later
-            tooold.append(each.tooOld)
+        values.append(each.value)
+        labels.append(each.label)
+        tooold.append(each.tooOld)
 
     mds = dict(labels=labels, values=values, ageStatement=tooold)
     cds = ColumnDataSource(mds)
@@ -242,9 +117,23 @@ def assembleFacSumTCS(r):
     return cds
 
 
-def assembleFacSumLPI(r):
+def dataGatherer_LPI(m, qdata):
     """
+    Instrument/plot/query specific contortions needed to make the
+    bulk of the plot code generic and abstract.  I feel ok
+    hardcoding stuff in here at least, since this will always be namespace
+    protected and unambigious (e.g. instrumentTelem.dataGatherer).
     """
+    pdata = OrderedDict()
+    for qtag in m.queries.keys():
+        pdata.update({qtag: qdata[qtag]})
+
+    # Downselect to just the final rows in each of the query dataframes
+    r = pdata['q_tcssv'].tail(1)
+    r2 = pdata['q_tcslois'].tail(1)
+    r3 = pdata['q_cubeinstcover'].tail(1)
+    r4 = pdata['q_cubefolds'].tail(1)
+
     # Common "now" time to compare everything against
     now = np.datetime64(dt.datetime.utcnow())
 
@@ -253,45 +142,28 @@ def assembleFacSumLPI(r):
     #
     # 'deshred' will automatically take the last entry and return a
     #   non-annoying version with its timestamp for later display.
-    #
-    # First, get the last index in the q_tcssv dataframe and use that
-    #   for all the TCS queries to make sure it's at least consistent
-    tcsLastIdx = r.cRA_h.index[-1]
-
-    mirrorcov = bplot.getLast(r.MirrorCover, lastIdx=tcsLastIdx,
-                              comptime=now)
+    mirrorcov = bplot.getLast(r.MirrorCover, comptime=now)
 
     # These are from other data sources, so get their values too
-    domeshut = bplot.getLast(r.DomeShutter, comptime=now)
-    instcover = bplot.getLast(r.InstCover, comptime=now)
+    domeshut = bplot.getLast(r2.DomeShutter, comptime=now)
+    instcover = bplot.getLast(r3.InstCover, comptime=now)
 
-    cubeLastIdx = r.PortThru.index[-1]
-    portT = bplot.getLast(r.PortThru, lastIdx=cubeLastIdx,
-                          comptime=now)
-    portA = bplot.getLast(r.PortA, lastIdx=cubeLastIdx,
-                          comptime=now)
-    portB = bplot.getLast(r.PortB, lastIdx=cubeLastIdx,
-                          comptime=now)
-    portC = bplot.getLast(r.PortC, lastIdx=cubeLastIdx,
-                          comptime=now)
-    portD = bplot.getLast(r.PortD, lastIdx=cubeLastIdx,
-                          comptime=now)
+    portT = bplot.getLast(r4.PortThru, comptime=now)
+    portA = bplot.getLast(r4.PortA, comptime=now)
+    portB = bplot.getLast(r4.PortB, comptime=now)
+    portC = bplot.getLast(r4.PortC, comptime=now)
+    portD = bplot.getLast(r4.PortD, comptime=now)
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
-    tableDat = [tcsLastIdx,
-                domeshut, mirrorcov, instcover,
+    tableDat = [domeshut, mirrorcov, instcover,
                 portT, portA, portB, portC, portD]
 
     values = []
     labels = []
     tooold = []
     for i, each in enumerate(tableDat):
-        if i == 0:
-            values.append(each.strftime("%Y-%m-%d %H:%M:%S.%f %Z"))
-            labels.append("DataTimestamp")
-            tooold.append(None)
-        elif each.label == "InstCover":
+        if each.label == "InstCover":
             # Special conversion to text for this one
             if each.value == 0:
                 values.append("Closed")
@@ -308,10 +180,9 @@ def assembleFacSumLPI(r):
             values.append(each.value)
             labels.append(each.label)
 
-        if i > 0:
-            # Rather than put this in each elif, I'll just do it here.
-            #   Add in our age comparison column, for color/styling later
-            tooold.append(each.tooOld)
+        # Rather than put this in each elif, I'll just do it here.
+        #   Add in our age comparison column, for color/styling later
+        tooold.append(each.tooOld)
 
     mds = dict(labels=labels, values=values, ageStatement=tooold)
     cds = ColumnDataSource(mds)
@@ -329,7 +200,6 @@ def makeFacSum_LPI(doc):
 
     mods = plotState.modules
     qdata = plotState.data
-    dset = plotState.colors
     theme = plotState.theme
 
     #
@@ -345,10 +215,7 @@ def makeFacSum_LPI(doc):
 
     # Use this to consistently filter/gather the data based on some
     #   specific tags/reorganizing
-    r = dataGatherer_LPI(m, qdata)
-
-    cds = assembleFacSumLPI(r)
-    print()
+    cds = dataGatherer_LPI(m, qdata)
 
     # Define our color format/template
     #   This uses Underscore’s template method and syntax.
@@ -408,27 +275,9 @@ def makeFacSum_LPI(doc):
         tdiff = (dt.datetime.utcnow() - timeUpdate).total_seconds()
         print("Data were queried %f seconds ago (%s)" % (tdiff, timeUpdate))
 
-        # Get the last timestamp present in the existing ColumnDataSource
-        #  Hardcode it for now since I'm the one that makes it
-        lastTime = cds.data['values'][0]
-
-        # Turn it into a datetime.datetime (with UTC timezone)
-        lastTimedt = bplot.convertTimestamp(lastTime, tz='UTC')
-
-        # Sweep up all the data, and filter down to only those
-        #   after the given time
-        nr = dataGatherer_LPI(m, qdata, timeFilter=lastTimedt)
-
-        if nr.empty is False:
-            # Check the data for updates, and downselect to just the newest
-            ncds = assembleFacSumLPI(nr)
-
-            # Actually update the data. Just replace it wholesale!
-            #   Should I really use .patch()? Or is that just for DataFrames?
-            cds = ncds
-            print("New data inplanted")
-        else:
-            print("No new data!")
+        # Let's just be dumb and replace everything all at once
+        ncds = dataGatherer_LPI(m, qdata)
+        cds.stream(ncds.data, rollover=7)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)
@@ -446,7 +295,6 @@ def makeFacSum_TCS(doc):
 
     mods = plotState.modules
     qdata = plotState.data
-    dset = plotState.colors
     theme = plotState.theme
 
     #
@@ -462,10 +310,7 @@ def makeFacSum_TCS(doc):
 
     # Use this to consistently filter/gather the data based on some
     #   specific tags/reorganizing
-    r = dataGatherer_TCS(m, qdata)
-
-    cds = assembleFacSumTCS(r)
-    print()
+    cds = dataGatherer_TCS(m, qdata)
 
     # Define our color format/template
     #   This uses Underscore’s template method and syntax.
@@ -525,27 +370,9 @@ def makeFacSum_TCS(doc):
         tdiff = (dt.datetime.utcnow() - timeUpdate).total_seconds()
         print("Data were queried %f seconds ago (%s)" % (tdiff, timeUpdate))
 
-        # Get the last timestamp present in the existing ColumnDataSource
-        #  Hardcode it for now since I'm the one that makes it
-        lastTime = cds.data['values'][0]
-
-        # Turn it into a datetime.datetime (with UTC timezone)
-        lastTimedt = bplot.convertTimestamp(lastTime, tz='UTC')
-
-        # Sweep up all the data, and filter down to only those
-        #   after the given time
-        nr = dataGatherer_TCS(m, qdata, timeFilter=lastTimedt)
-
-        if nr.empty is False:
-            # Check the data for updates, and downselect to just the newest
-            ncds = assembleFacSumTCS(nr)
-
-            # Actually update the data. Just replace it wholesale!
-            #   Should I really use .patch()? Or is that just for DataFrames?
-            cds = ncds
-            print("New data inplanted")
-        else:
-            print("No new data!")
+        # Let's just be dumb and replace everything all at once
+        ncds = dataGatherer_TCS(m, qdata)
+        cds.stream(ncds.data, rollover=11)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)

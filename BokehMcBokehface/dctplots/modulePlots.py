@@ -176,7 +176,7 @@ def getLast(p1, lastIdx=None, comptime=None):
     retObj.timestamp = lastIdx.to_datetime64()
     retObj.judgeAge(comptime=comptime)
 
-    print(retObj.label, retObj.value, retObj.timestamp)
+    # print(retObj.label, retObj.value, retObj.timestamp)
 
     return retObj
 
