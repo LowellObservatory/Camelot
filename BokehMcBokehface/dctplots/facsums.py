@@ -26,7 +26,7 @@ from bokeh.plotting import ColumnDataSource
 from . import modulePlots as bplot
 
 
-def dataGatherer_TCS(m, qdata, timeFilter=None, fillNull=True, debug=True):
+def dataGatherer_TCS(m, qdata):
     """
     Instrument/plot/query specific contortions needed to make the
     bulk of the plot code generic and abstract.  I feel ok
@@ -106,7 +106,7 @@ def dataGatherer_TCS(m, qdata, timeFilter=None, fillNull=True, debug=True):
     values = []
     labels = []
     tooold = []
-    for i, each in enumerate(tableDat):
+    for each in tableDat:
         values.append(each.value)
         labels.append(each.label)
         tooold.append(each.tooOld)
@@ -162,7 +162,7 @@ def dataGatherer_LPI(m, qdata):
     values = []
     labels = []
     tooold = []
-    for i, each in enumerate(tableDat):
+    for each in tableDat:
         if each.label == "InstCover":
             # Special conversion to text for this one
             if each.value == 0:
