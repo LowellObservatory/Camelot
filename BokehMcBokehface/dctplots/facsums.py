@@ -138,6 +138,7 @@ def dataGatherer_LPI(m, qdata):
     r2 = pdata['q_tcslois'].tail(1)
     r3 = pdata['q_cubeinstcover'].tail(1)
     r4 = pdata['q_cubefolds'].tail(1)
+    r5 = pdata['q_aossv'].tail(1)
 
     # Common "now" time to compare everything against
     now = np.datetime64(dt.datetime.utcnow())
@@ -159,9 +160,14 @@ def dataGatherer_LPI(m, qdata):
     portC = bplot.getLast(r4.PortC, comptime=now)
     portD = bplot.getLast(r4.PortD, comptime=now)
 
+    m2piston = bplot.getLast(r5.M2PistonDemand*1e6,
+                             label="Demand M2 Piston", comptime=now)
+    totfocus = bplot.getLast(r5.totalFocusOffset*1e6,
+                             label="Total Focus Offset", comptime=now)
+
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
-    tableDat = [domeshut, mirrorcov, instcover,
+    tableDat = [domeshut, mirrorcov, instcover, m2piston, totfocus,
                 portT, portA, portB, portC, portD]
 
     values = []
@@ -282,7 +288,7 @@ def makeFacSum_LPI(doc):
 
         # Let's just be dumb and replace everything all at once
         ncds = dataGatherer_LPI(m, qdata)
-        cds.stream(ncds.data, rollover=8)
+        cds.stream(ncds.data, rollover=10)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)
