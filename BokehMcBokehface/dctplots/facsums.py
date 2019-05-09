@@ -54,38 +54,45 @@ def dataGatherer_TCS(m, qdata):
                          r.cRA_m,
                          r.cRA_s],
                         delim=":",
-                        name="cRA", comptime=now)
+                        name="Current RA", comptime=now)
     cDec = bplot.deshred([r.cDec_d,
                           r.cDec_m,
                           r.cDec_s],
                          delim=":",
-                         name="cDec", comptime=now)
+                         name="Current Dec", comptime=now)
 
-    cFrame = bplot.getLast(r.cFrame, comptime=now)
-    # cEpoch = bplot.deshred([r.cEqP,
-    #                         r.cEqY,
-    #                         r.cFrame],
-    #                        delim="", lastIdx=tcsLastIdx,
-    #                        name="cEpoch", comptime=now)
+    cFrame = bplot.getLast(r.cFrame,
+                           label="Current Frame", comptime=now)
 
     # DEMAND coords
     dRA = bplot.deshred([r.dRA_h,
                          r.dRA_m,
                          r.dRA_s],
                         delim=":",
-                        name="dRA", comptime=now)
+                        name="Demand RA", comptime=now)
+
     dDec = bplot.deshred([r.dDec_d,
                           r.dDec_m,
                           r.dDec_s],
                          delim=":",
-                         name="dDec", comptime=now)
+                         name="Demand Dec", comptime=now)
 
-    dFrame = cFrame = bplot.getLast(r.dFrame, comptime=now)
-    # dEpoch = bplot.deshred([r.dEqP,
-    #                         r.dEqY,
-    #                         r.dFrame],
-    #                        delim="", lastIdx=tcsLastIdx,
-    #                        name="dEpoch", comptime=now)
+    dFrame = bplot.getLast(r.dFrame,
+                           label="Demand Frame", comptime=now)
+
+    # HA
+    cHA = bplot.deshred([r.cHA_h,
+                         r.cHA_m,
+                         r.cHA_s],
+                        delim=":",
+                        name="Current HA", comptime=now)
+
+    # LST
+    lst = bplot.deshred([r.LST_h,
+                         r.LST_m,
+                         r.LST_s],
+                        delim=":",
+                        name="TCS LST", comptime=now)
 
     airmass = bplot.getLast(r.Airmass, comptime=now)
     targname = bplot.getLast(r.TargetName, comptime=now)
@@ -95,9 +102,7 @@ def dataGatherer_TCS(m, qdata):
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
-    tableDat = [targname,
-                # cRA, cDec, cEpoch,
-                # dRA, dDec, dEpoch,
+    tableDat = [targname, lst, cHA,
                 cRA, cDec, cFrame,
                 dRA, dDec, dFrame,
                 airmass, guidemode,
@@ -372,7 +377,7 @@ def makeFacSum_TCS(doc):
 
         # Let's just be dumb and replace everything all at once
         ncds = dataGatherer_TCS(m, qdata)
-        cds.stream(ncds.data, rollover=11)
+        cds.stream(ncds.data, rollover=13)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)

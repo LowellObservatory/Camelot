@@ -160,7 +160,7 @@ def getLastVal(cds, cdstag):
     return fVal
 
 
-def getLast(p1, lastIdx=None, comptime=None):
+def getLast(p1, label=None, lastIdx=None, comptime=None):
     """
     TODO: Remember how this is different than the one above (getLastVal)
     """
@@ -169,7 +169,10 @@ def getLast(p1, lastIdx=None, comptime=None):
         lastIdx = p1.index[-1]
 
     retObj = valJudgement()
-    retObj.label = p1.name
+    if label is None:
+        retObj.label = p1.name
+    else:
+        retObj.label = label
     retObj.value = p1[lastIdx]
 
     # Use datetime64 to avoid an annoying nanoseconds warning when
