@@ -155,7 +155,7 @@ def assembleFacSumTCS(r):
     #
     # First, get the last valid index in the q_tcssv dataframe and use that
     #   for all the TCS queries to make sure it's at least consistent
-    tcsLastIdx = r.cRA_h.last_valid_index()
+    tcsLastIdx = r.cRA_h.index[-1]
 
     # CURRENT coords
     cRA = bplot.deshred([r.cRA_h,
@@ -251,9 +251,9 @@ def assembleFacSumLPI(r):
     # 'deshred' will automatically take the last entry and return a
     #   non-annoying version with its timestamp for later display.
     #
-    # First, get the last valid index in the q_tcssv dataframe and use that
+    # First, get the last index in the q_tcssv dataframe and use that
     #   for all the TCS queries to make sure it's at least consistent
-    tcsLastIdx = r.cRA_h.last_valid_index()
+    tcsLastIdx = r.cRA_h.index[-1]
 
     mirrorcov = bplot.getLast(r.MirrorCover, lastIdx=tcsLastIdx,
                               comptime=now)
@@ -262,7 +262,7 @@ def assembleFacSumLPI(r):
     domeshut = bplot.getLast(r.DomeShutter, comptime=now)
     instcover = bplot.getLast(r.InstCover, comptime=now)
 
-    cubeLastIdx = r.PortThru.last_valid_index()
+    cubeLastIdx = r.PortThru.index[-1]
     portT = bplot.getLast(r.PortThru, lastIdx=cubeLastIdx,
                           comptime=now)
     portA = bplot.getLast(r.PortA, lastIdx=cubeLastIdx,
