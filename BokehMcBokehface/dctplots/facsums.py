@@ -138,6 +138,9 @@ def dataGatherer_LPI(m, qdata, timeFilter=None, fillNull=True, debug=True):
         rj = rj.join(rf3, how='outer')
         rj = rj.join(rf4, how='outer')
 
+        if fillNull is True:
+            rj.fillna(method='ffill', inplace=True)
+
     return rj
 
 

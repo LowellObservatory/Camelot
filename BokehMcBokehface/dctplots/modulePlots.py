@@ -165,7 +165,7 @@ def getLast(p1, lastIdx=None, comptime=None):
     """
     if lastIdx is None:
         # Get the last valid position/value in the dataframe
-        lastIdx = p1.last_valid_index()
+        lastIdx = p1.index[-1]
 
     retObj = valJudgement()
     retObj.label = p1.name
@@ -175,6 +175,8 @@ def getLast(p1, lastIdx=None, comptime=None):
     #   using just regular .to_pydatetime()
     retObj.timestamp = lastIdx.to_datetime64()
     retObj.judgeAge(comptime=comptime)
+
+    print(retObj.label, retObj.value, retObj.timestamp)
 
     return retObj
 
