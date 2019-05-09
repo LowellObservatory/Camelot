@@ -346,7 +346,7 @@ def createHoverTool(simg, cols):
     ht = HoverTool()
     ht.tooltips = [("Time", "@index{%F %T}")]
     for col in cols:
-        fStr = "@%s{0.0}" % (col)
+        fStr = "@%s{0.00}" % (col)
         ht.tooltips.append((col, fStr))
 
     ht.formatters = {'index': 'datetime'}
