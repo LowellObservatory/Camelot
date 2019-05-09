@@ -277,7 +277,7 @@ def makeFacSum_LPI(doc):
 
         # Let's just be dumb and replace everything all at once
         ncds = dataGatherer_LPI(m, qdata)
-        cds.stream(ncds.data, rollover=7)
+        cds.stream(ncds.data, rollover=8)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)
