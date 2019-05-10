@@ -37,12 +37,11 @@ def dataGatherer(m, qdata):
     for qtag in m.queries.keys():
         pdata.update({qtag: qdata[qtag]})
 
-    # Downselect to just the final rows in each of the query dataframes
-    r = pdata['q_tcssv'].tail(1)
-    r2 = pdata['q_tcslois'].tail(1)
-    r3 = pdata['q_cubeinstcover'].tail(1)
-    r4 = pdata['q_cubefolds'].tail(1)
-    r5 = pdata['q_aossv'].tail(1)
+    r = pdata['q_tcssv']
+    r2 = pdata['q_tcslois']
+    r3 = pdata['q_cubeinstcover']
+    r4 = pdata['q_cubefolds']
+    r5 = pdata['q_aossv']
 
     # Common "now" time to compare everything against
     now = np.datetime64(dt.datetime.utcnow())
@@ -52,24 +51,24 @@ def dataGatherer(m, qdata):
     #
     # 'deshred' will automatically take the last entry and return a
     #   non-annoying version with its timestamp for later display.
-    mirrorcov = bplot.getLast(r.MirrorCover, comptime=now)
+    mirrorcov = bplot.getLast(r, "MirrorCover", comptime=now)
 
     # These are from other data sources, so get their values too
-    domeshut = bplot.getLast(r2.DomeShutter, comptime=now)
-    instcover = bplot.getLast(r3.InstCover, comptime=now)
+    domeshut = bplot.getLast(r2, "DomeShutter", comptime=now)
+    instcover = bplot.getLast(r3, "InstCover", comptime=now)
 
-    portT = bplot.getLast(r4.PortThru, comptime=now)
-    portA = bplot.getLast(r4.PortA, comptime=now)
-    portB = bplot.getLast(r4.PortB, comptime=now)
-    portC = bplot.getLast(r4.PortC, comptime=now)
-    portD = bplot.getLast(r4.PortD, comptime=now)
+    portT = bplot.getLast(r4, 'PortThru', comptime=now)
+    portA = bplot.getLast(r4, 'PortA', comptime=now)
+    portB = bplot.getLast(r4, 'PortB', comptime=now)
+    portC = bplot.getLast(r4, 'PortC', comptime=now)
+    portD = bplot.getLast(r4, 'PortD', comptime=now)
 
-    m2piston = bplot.getLast(r5.M2PistonDemand*1e6,
+    m2piston = bplot.getLast(r5, 'M2PistonDemand',
                              label="Demand M2 Piston",
-                             comptime=now, fstr="%.3f")
-    totfocus = bplot.getLast(r5.totalFocusOffset*1e6,
+                             comptime=now, scaleFactor=1e6, fstr="%.3f")
+    totfocus = bplot.getLast(r5, 'totalFocusOffset',
                              label="Total Focus Offset",
-                             comptime=now, fstr="%.3f")
+                             comptime=now, scaleFactor=1e6, fstr="%.3f")
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
