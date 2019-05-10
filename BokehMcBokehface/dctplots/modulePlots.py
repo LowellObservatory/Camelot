@@ -26,7 +26,8 @@ import pandas as pd
 from pytz import timezone
 
 from bokeh.plotting import figure, ColumnDataSource
-from bokeh.models import DataRange1d, LinearAxis, Legend, LegendItem, HoverTool
+from bokeh.models import Span, DataRange1d, LinearAxis,\
+                         Legend, LegendItem, HoverTool
 
 
 class valJudgement(object):
@@ -51,6 +52,23 @@ class valJudgement(object):
             self.tooOld = True
         else:
             self.tooOld = False
+
+
+def createSunAnnotations(qdata):
+    """
+    """
+    # Highlight the sunrise/sunset times. Hackish.
+    srt = qdata['ephemera'].sunrise.tail(1).values[0]
+    sunrise = Span(location=srt, name='sunrise',
+                   dimension='height', line_color='red',
+                   line_dash='dashed', line_alpha=0.75, line_width=3)
+
+    sst = qdata['ephemera'].sunset.tail(1).values[0]
+    sunset = Span(location=sst, name='sunset',
+                  dimension='height', line_color='green',
+                  line_dash='dashed', line_alpha=0.75, line_width=3)
+
+    return sunrise, sunset
 
 
 def newDataCallback(cds, cols, nf, lastTimedt, y1lim):

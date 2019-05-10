@@ -157,6 +157,10 @@ def make_plot(doc):
     fig, cds, cols = bplot.commonPlot(r, ldict, y1lim, dset,
                                       height=400, width=600, y2=y2)
 
+    sunrise, sunset = bplot.createSunAnnotations(qdata)
+    fig.add_layout(sunrise)
+    fig.add_layout(sunset)
+
     # At this point, we're done! Just apply the theme and attach the figure
     #   to the rest of the document, then setup the update callback
     doc.theme = theme
@@ -190,7 +194,21 @@ def make_plot(doc):
             cds.stream(mds2, rollover=15000)
             print("New data streamed; %d row(s) added" % (nf.shape[0]))
 
-    print("Range now: %s to %s" % (fig.x_range.start, fig.x_range.end))
+        # Check to see if we have to update the sunrise/sunset times
+        #   Create ones so it's super easy to just compare by .location
+        nsunrise, nsunset = bplot.createSunAnnotations(qdata)
+
+        # Check to see if there's actually an update
+        if sunrise.location != nsunrise.location:
+            print("Updated sunrise span location")
+            sunrise.location = sunrise.location
+
+        if sunset.location != nsunset.location:
+            print("Updated sunset span location")
+            sunset.location = nsunset.location
+
+        print()
+
     print("")
 
     doc.add_periodic_callback(grabNew, 5000)
