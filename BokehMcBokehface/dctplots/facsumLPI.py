@@ -64,10 +64,10 @@ def dataGatherer(m, qdata):
     portD = bplot.getLast(r4, 'PortD', comptime=now)
 
     m2piston = bplot.getLast(r5, 'M2PistonDemand',
-                             label="Demand M2 Piston",
+                             label="Demand M2 Piston", nullVal=-1,
                              comptime=now, scaleFactor=1e6, fstr="%.3f")
     totfocus = bplot.getLast(r5, 'totalFocusOffset',
-                             label="Total Focus Offset",
+                             label="Total Focus Offset", nullVal=-1,
                              comptime=now, scaleFactor=1e6, fstr="%.3f")
 
     # Finally done! Now put it all into a list so it can be passed

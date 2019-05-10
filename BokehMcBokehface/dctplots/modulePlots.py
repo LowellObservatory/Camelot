@@ -19,6 +19,7 @@ turn out to be vestigial from the initial version that made plot snapshots.
 
 from __future__ import division, print_function, absolute_import
 
+import random
 import datetime as dt
 
 import numpy as np
@@ -179,16 +180,26 @@ def getLastVal(cds, cdstag):
 
 
 def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
-            scaleFactor=None, fstr=None):
+            scaleFactor=None, fstr=None, nullVal=None):
     """
     """
     retObj = valJudgement()
 
     # If it's empty, we can just cut to the chase
     if p1 == {}:
-        retObj.value = "null"
+        # Give it a default value
+        if nullVal is None:
+            # Have some fun with it at least
+            ustrs = ["unknown", "inconceivable", "unfathomable",
+                     "unimaginable", "unknowable", "unclear"]
+            retObj.value = random.choice(ustrs).upper()
+        else:
+            retObj.value = nullVal
+
         # Give it a default timestamp
         retObj.timestamp = pd.Timestamp(0, unit='s', tz='UTC').to_datetime64()
+
+        # Give it a default label
         if label is not None:
             retObj.label = label
         else:
