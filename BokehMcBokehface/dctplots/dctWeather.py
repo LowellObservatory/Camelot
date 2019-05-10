@@ -41,6 +41,7 @@ def dataGatherer(m, qdata, timeFilter=None, fillNull=True, debug=True):
     # Get rid of series that won't be appearing in this plot
     r = r.drop("WindDir2MinAvg", axis=1)
     r = r.drop("WindSpeed2MinAvg", axis=1)
+    r = r.drop("WindSpeed60MinMax", axis=1)
 
     # Change F -> C because we're scientists god dammit
     r.AirTemp = (r.AirTemp - 32.) * (5./9.)
