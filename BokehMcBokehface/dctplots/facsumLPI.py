@@ -20,7 +20,6 @@ from collections import OrderedDict
 
 import numpy as np
 
-from bokeh.models import DataTable, TableColumn, HTMLTemplateFormatter
 from bokeh.plotting import ColumnDataSource
 
 from . import modulePlots as bplot
@@ -118,12 +117,6 @@ def makeFacSum(doc):
     qdata = plotState.data
     theme = plotState.theme
 
-    #
-    # NOTE: Should clean this up or stuff it all into dataGatherer
-    #
-    # Hard coding the access/dict key for the data needed for this plot
-    #   Cringe-worthy but tolerable. This MUST match what is set in the
-    #   'modules.conf' file otherwise it'll blow up.
     moduleKey = 'facsum_lpi'
     m = mods[moduleKey]
 
@@ -133,48 +126,7 @@ def makeFacSum(doc):
     #   specific tags/reorganizing
     cds = dataGatherer(m, qdata)
 
-    # Define our color format/template
-    #   This uses Underscore’s template method and syntax.
-    #   http://underscorejs.org/#template
-    template = """
-               <b>
-                 <div style="background:<%=
-                   (function ageColorer(){
-                      if(ageStatement){
-                        return("#ff0000;opacity:0.25;")
-                      }
-                      else{
-                        return("White")
-                      }
-                    }()) %>;">
-                   <%= value %>
-                 </div>
-               </b>
-               """
-
-    formatter = HTMLTemplateFormatter(template=template)
-
-    # Now we construct our table by specifying the columns we actually want.
-    #   We ignore the 'ageStatement' row for this because we
-    #   just get at it via the formatter/template defined above
-    labelCol = TableColumn(field='labels', title='Parameter')
-    valueCol = TableColumn(field='values', title='Value', formatter=formatter)
-    cols = [labelCol, valueCol]
-
-    nrows = len(cds.data['labels'])
-
-    # Now actually construct the table
-    dtab = DataTable(columns=cols, source=cds)
-
-    # THIS IS SO GOD DAMN IRRITATING
-    #   It won't accept this in a theme file because it seems like there's a
-    #   type check on it and None is not an int type
-    dtab.index_position = None
-
-    # This is also irritating
-    #   Specify a css group to be stuffed into the resulting div/template
-    #   which is then styled by something else. Can't get it thru the theme :(
-    dtab.css_classes = ["nightwatch_bokeh_table"]
+    dtab, nRows = bplot.setupTable(cds)
 
     doc.theme = theme
     doc.title = m.title
@@ -195,7 +147,7 @@ def makeFacSum(doc):
 
         # Let's just be dumb and replace everything all at once
         ncds = dataGatherer(m, qdata)
-        cds.stream(ncds.data, rollover=nrows)
+        cds.stream(ncds.data, rollover=nRows)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)

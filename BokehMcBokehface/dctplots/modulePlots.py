@@ -28,7 +28,8 @@ from pytz import timezone
 
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.models import Span, DataRange1d, LinearAxis,\
-                         Legend, LegendItem, HoverTool
+                         Legend, LegendItem, HoverTool,\
+                         DataTable, TableColumn, HTMLTemplateFormatter
 
 
 class valJudgement(object):
@@ -53,6 +54,55 @@ class valJudgement(object):
             self.tooOld = True
         else:
             self.tooOld = False
+
+
+def setupTable(cds):
+    """
+    """
+    # Define our color format/template
+    #   This uses Underscore’s template method and syntax.
+    #   http://underscorejs.org/#template
+    template = """
+                <b>
+                <div style="background:<%=
+                    (function ageColorer(){
+                        if(ageStatement){
+                        return("#ff0000;opacity:0.25;")
+                        }
+                        else{
+                        return("White")
+                        }
+                    }()) %>;">
+                    <%= value %>
+                </div>
+                </b>
+                """
+
+    formatter = HTMLTemplateFormatter(template=template)
+
+    # Now we construct our table by specifying the columns we actually want.
+    #   We ignore the 'ageStatement' row for this because we
+    #   just get at it via the formatter/template defined above
+    labelCol = TableColumn(field='labels', title='Parameter')
+    valueCol = TableColumn(field='values', title='Value', formatter=formatter)
+    cols = [labelCol, valueCol]
+
+    nRows = len(cds.data['labels'])
+
+    # Now actually construct the table
+    dtab = DataTable(columns=cols, source=cds)
+
+    # THIS IS SO GOD DAMN IRRITATING
+    #   It won't accept this in a theme file because it seems like there's a
+    #   type check on it and 'None' is not the 'correct' type
+    dtab.index_position = None
+
+    # This is also irritating
+    #   Specify a css group to be stuffed into the resulting div/template
+    #   which is then styled by something else. Can't get it thru the theme :(
+    dtab.css_classes = ["nightwatch_bokeh_table"]
+
+    return dtab, nRows
 
 
 def createSunAnnotations(qdata):
@@ -186,7 +236,7 @@ def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
     retObj = valJudgement()
 
     # If it's empty, we can just cut to the chase
-    if p1 == {}:
+    if not isinstance(p1, pd.DataFrame):
         # Give it a default value
         if nullVal is None:
             # Have some fun with it at least
@@ -208,10 +258,11 @@ def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
         # Get the last valid position/value in the dataframe
         lastIdx = p1.index[-1]
 
+        val = getattr(p1, fieldname)[lastIdx]
         if scaleFactor is not None:
-            sValue = p1[lastIdx]*scaleFactor
+            sValue = val*scaleFactor
         else:
-            sValue = p1[lastIdx]
+            sValue = val
 
         if fstr is None:
             retObj.value = sValue
@@ -232,50 +283,44 @@ def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
     return retObj
 
 
-def deshred(plist, delim=":", name=None, lastIdx=None,
-            comptime=None, last=True):
+def deshred(plist, failVal=-1, delim=":", name=None):
     """
-    NOTE: p1 thru 3 are expected to be Pandas dataframes
+    NOTE: p0 thru 2 are expected to be valJudgement objects obtained by
+    something like the getLast function!
     """
-    if comptime is None:
-        comptime = np.datetime64(dt.datetime.utcnow())
+    # Just use the properties from the first one and assume the rest follow
+    #   in terms of whether they were too old or not
+    fObj = valJudgement()
+    fObj.timestamp = plist[0].timestamp
+    fObj.tooOld = plist[0].tooOld
 
-    if last is True:
-        retStr = ""
-        for i, each in enumerate(plist):
-            # Made this a function so I can reuse it elsewhere
-            retVal = getLast(each, lastIdx=lastIdx)
-
+    rstr = ""
+    for i, each in enumerate(plist):
+        if each == -1:
+            goodSoFar = False
+            break
+        else:
             # Smoosh it all together; if it's the last value, don't
             #   add the delim since it's not needed at the end of the str
             if i == len(plist) - 1:
                 delim = ""
 
             try:
-                retStr += "%02d%s" % (retVal.value, delim)
+                rstr += "%02d%s" % (each.value, delim)
             except TypeError:
                 # This means we probably had heterogeneous datatypes so just
                 #   print them all as strings to move on quickly
-                retStr += "%s%s" % (retVal.value, delim)
+                rstr += "%s%s" % (each.value, delim)
 
-        # Pack everything up for returning it all as one object
-        fObj = valJudgement()
-        if name is None:
-            fObj.label = retVal.label
-        else:
-            fObj.label = name
-        fObj.value = retStr
-        fObj.timestamp = retVal.timestamp
-        fObj.judgeAge(comptime=comptime)
-
-        return fObj
+    if name is None:
+        # Don't really have a good default here so just use the first one
+        fObj.label = plist[0].label
     else:
-        # Should do a sort of a zip dance here to combine the multiple
-        #   dataframes into a single dataframe with the delim; would save some
-        #   CPU cycles if I did this just after the query so the plotting
-        #   routine doesn't have to do it, but that sounds a lot like
-        #   "Version 2.0" sort of talk.
-        raise NotImplementedError
+        fObj.label = name
+
+    fObj.value = rstr
+
+    return fObj
 
 
 def checkForEmptyData(indat):
