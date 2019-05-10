@@ -77,8 +77,7 @@ def batchQuery(plotState=None, site='dct'):
                                      q.db.port,
                                      dbuser=q.db.user,
                                      dbpass=q.db.pasw,
-                                     dbname=q.db.tabl,
-                                     datanames=q.dn)
+                                     dbname=q.db.tabl)
         qdata.update({iq: td})
 
     dts = dt.utcnow()
