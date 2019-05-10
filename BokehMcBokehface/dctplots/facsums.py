@@ -94,11 +94,11 @@ def dataGatherer_TCS(m, qdata):
                         delim=":",
                         name="TCS LST", comptime=now)
 
-    airmass = bplot.getLast(r.Airmass, comptime=now)
+    airmass = bplot.getLast(r.Airmass, comptime=now, fstr="%.2f")
     targname = bplot.getLast(r.TargetName, comptime=now)
     guidemode = bplot.getLast(r.GuideMode, comptime=now)
-    sundist = bplot.getLast(r.SunDistance, comptime=now)
-    moondist = bplot.getLast(r.MoonDistance, comptime=now)
+    sundist = bplot.getLast(r.SunDistance, comptime=now, fstr="%.2f")
+    moondist = bplot.getLast(r.MoonDistance, comptime=now, fstr="%.2f")
 
     # Now snag our pyephem ephemeris information
     e = qdata['ephemera']
@@ -108,9 +108,12 @@ def dataGatherer_TCS(m, qdata):
     nsunrise = bplot.getLast(e.nextsunrise, label='Next Sunrise', comptime=now)
     nsunset = bplot.getLast(e.nextsunset, label='Next Sunset', comptime=now)
 
-    sunalt = bplot.getLast(e.sun_dms, label='Sun Altitude', comptime=now)
-    moonalt = bplot.getLast(e.moon_dms, label='Moon Altitude', comptime=now)
-    moonphase = bplot.getLast(e.moonphase*100., label='Moon Phase', comptime=now)
+    sunalt = bplot.getLast(e.sun_dms, label='Sun Altitude',
+                           comptime=now, fstr="%.2f")
+    moonalt = bplot.getLast(e.moon_dms, label='Moon Altitude',
+                            comptime=now, fstr="%.2f")
+    moonphase = bplot.getLast(e.moonphase*100., label='Moon Phase',
+                              comptime=now, fstr="%.2f")
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
@@ -181,9 +184,11 @@ def dataGatherer_LPI(m, qdata):
     portD = bplot.getLast(r4.PortD, comptime=now)
 
     m2piston = bplot.getLast(r5.M2PistonDemand*1e6,
-                             label="Demand M2 Piston", comptime=now)
+                             label="Demand M2 Piston",
+                             comptime=now, fstr="%.3f")
     totfocus = bplot.getLast(r5.totalFocusOffset*1e6,
-                             label="Total Focus Offset", comptime=now)
+                             label="Total Focus Offset",
+                             comptime=now, fstr="%.3f")
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there

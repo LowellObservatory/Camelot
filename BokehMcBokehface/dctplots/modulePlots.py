@@ -160,9 +160,8 @@ def getLastVal(cds, cdstag):
     return fVal
 
 
-def getLast(p1, label=None, lastIdx=None, comptime=None):
+def getLast(p1, label=None, lastIdx=None, comptime=None, fstr=None):
     """
-    TODO: Remember how this is different than the one above (getLastVal)
     """
     if lastIdx is None:
         # Get the last valid position/value in the dataframe
@@ -173,7 +172,11 @@ def getLast(p1, label=None, lastIdx=None, comptime=None):
         retObj.label = p1.name
     else:
         retObj.label = label
-    retObj.value = p1[lastIdx]
+
+    if fstr is None:
+        retObj.value = p1[lastIdx]
+    else:
+        retObj.value = fstr % (p1[lastIdx])
 
     # Use datetime64 to avoid an annoying nanoseconds warning when
     #   using just regular .to_pydatetime()

@@ -176,7 +176,7 @@ def batchQuery(plotState=None, site='dct'):
     # Create pyEphem object at the above for the current time
     #   Doing it in a class so it can also contain the solarsystemAngles too
     #   along with anything else we decide we need later on
-    obsSite = observingSite(sitename='dct')
+    obsSite = observingSite(sitename=site)
 
     # Translate all those times and angles into a dataframe that we can
     #   then stuff into our hiding spot with all the other things
