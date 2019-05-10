@@ -162,6 +162,8 @@ def makeFacSum(doc):
     valueCol = TableColumn(field='values', title='Value', formatter=formatter)
     cols = [labelCol, valueCol]
 
+    nrows = len(cds.data['labels'])
+
     # Now actually construct the table
     dtab = DataTable(columns=cols, source=cds)
 
@@ -194,7 +196,7 @@ def makeFacSum(doc):
 
         # Let's just be dumb and replace everything all at once
         ncds = dataGatherer(m, qdata)
-        cds.stream(ncds.data, rollover=10)
+        cds.stream(ncds.data, rollover=nrows)
 
     print("Set doc periodic callback")
     doc.add_periodic_callback(grabNew, 5000)
