@@ -35,7 +35,7 @@ class valJudgement(object):
         self.label = None
         self.value = None
         self.timestamp = None
-        self.tooOld = False
+        self.tooOld = True
 
     def judgeAge(self, maxage=None, comptime=None):
         # Need to put everything into Numpy datetime64/timedelta64 objects
@@ -178,30 +178,45 @@ def getLastVal(cds, cdstag):
     return fVal
 
 
-def getLast(p1, label=None, lastIdx=None, comptime=None, fstr=None):
+def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
+            scaleFactor=None, fstr=None):
     """
     """
-    if lastIdx is None:
+    retObj = valJudgement()
+
+    # If it's empty, we can just cut to the chase
+    if p1 == {}:
+        retObj.value = "null"
+        # Give it a default timestamp
+        retObj.timestamp = pd.Timestamp(0, unit='s', tz='UTC').to_datetime64()
+        if label is not None:
+            retObj.label = label
+        else:
+            retObj.label = fieldname
+    else:
         # Get the last valid position/value in the dataframe
         lastIdx = p1.index[-1]
 
-    retObj = valJudgement()
-    if label is None:
-        retObj.label = p1.name
-    else:
-        retObj.label = label
+        if scaleFactor is not None:
+            sValue = p1[lastIdx]*scaleFactor
+        else:
+            sValue = p1[lastIdx]
 
-    if fstr is None:
-        retObj.value = p1[lastIdx]
-    else:
-        retObj.value = fstr % (p1[lastIdx])
+        if fstr is None:
+            retObj.value = sValue
+        else:
+            retObj.value = fstr % (sValue)
 
-    # Use datetime64 to avoid an annoying nanoseconds warning when
-    #   using just regular .to_pydatetime()
-    retObj.timestamp = lastIdx.to_datetime64()
+        # Use datetime64 to avoid an annoying nanoseconds warning when
+        #   using just regular .to_pydatetime()
+        retObj.timestamp = lastIdx.to_datetime64()
+
+        if label is not None:
+            retObj.label = label
+        else:
+            retObj.label = p1.name
+
     retObj.judgeAge(comptime=comptime)
-
-    # print(retObj.label, retObj.value, retObj.timestamp)
 
     return retObj
 
