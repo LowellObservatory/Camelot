@@ -30,7 +30,7 @@ import dctplots.dbQueries as dbq
 import dctplots.colorWheelies as cwheels
 
 from dctplots import facsumLPI, facsumTCS
-from dctplots import ephemera, dctWeather, instrumentTelem
+from dctplots import ephemera, dctWeather, dctWind, instrumentTelem
 
 
 # Make sure all the endpoints work from the same base document.
@@ -121,6 +121,9 @@ def configServer():
     dctWeatherFunc = FunctionHandler(dctWeather.make_plot)
     dctWeatherApp = Application(dctWeatherFunc)
 
+    dctWindFunc = FunctionHandler(dctWind.make_plot)
+    dctWindApp = Application(dctWindFunc)
+
     lmiTempFunc = FunctionHandler(instrumentTelem.make_plot)
     lmiTempApp = Application(lmiTempFunc)
 
@@ -131,6 +134,7 @@ def configServer():
     facsumLPIApp = Application(facsumLPIFunc)
 
     apps = {'/dctweather': dctWeatherApp,
+            '/dctwind': dctWindApp,
             '/lmitemps': lmiTempApp,
             '/facsum_tcs': facsumTCSApp,
             '/facsum_lpi': facsumLPIApp}
