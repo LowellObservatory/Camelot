@@ -93,7 +93,7 @@ def queryConstructor(dbinfo, dtime=48, debug=False):
 
 def getResultsDataFrame(host, querystr, port=8086,
                         dbuser='rand', dbpass='pass',
-                        dbname='DBname', datanames=None):
+                        dbname='DBname'):
     """
     Attempts to distinguish queries that have results grouped by a tag
     vs. those which are just of multiple fields. May be buggy still.
