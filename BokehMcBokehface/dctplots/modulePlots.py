@@ -276,7 +276,7 @@ def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
         if label is not None:
             retObj.label = label
         else:
-            retObj.label = p1.name
+            retObj.label = fieldname
 
     retObj.judgeAge(comptime=comptime)
 
