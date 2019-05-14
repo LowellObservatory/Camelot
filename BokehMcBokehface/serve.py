@@ -140,7 +140,10 @@ def configServer():
 
     print("Starting bokeh server...")
     server = Server(apps, port=5000,
-                    allow_websocket_origin=['localhost:5000',
+                    allow_websocket_origin=['127.0.0.1:8000',
+                                            '127.0.0.1:5000',
+                                            'localhost:5000',
+                                            'localhost:8000',
                                             'dctsleeperservice:5000',
                                             'dctsleeperservice:9876',
                                             'nightwatch',
