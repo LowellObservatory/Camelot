@@ -70,7 +70,7 @@ def setupTable(cds):
                         return("#ff0000;opacity:0.25;")
                         }
                         else{
-                        return("White")
+                        return("")
                         }
                     }()) %>;">
                     <%= value %>
