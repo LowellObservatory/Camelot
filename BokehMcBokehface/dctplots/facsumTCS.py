@@ -172,6 +172,10 @@ def makeFacSum(doc):
 
     dtab, nRows = bplot.setupTable(cds)
 
+    dtab.width = 390
+    dtab.height = 510
+    dtab.margin = 0
+
     doc.theme = theme
     doc.title = mods[modKey].title
     doc.add_root(dtab)

@@ -128,6 +128,10 @@ def makeFacSum(doc):
 
     dtab, nRows = bplot.setupTable(cds)
 
+    dtab.width = 390
+    dtab.height = 290
+    dtab.margin = 0
+
     doc.theme = theme
     doc.title = m.title
     doc.add_root(dtab)

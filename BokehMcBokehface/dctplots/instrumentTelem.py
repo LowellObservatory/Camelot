@@ -140,7 +140,7 @@ def make_plot(doc):
     # This does everything else. Loops over the columns in the 'r' DataFrame
     #   and creates a ColumnDataSource for the resulting figure
     fig, cds, cols = bplot.commonPlot(r, ldict, y1lim, dset,
-                                      height=400, width=600)
+                                      height=400, width=500)
 
     # At this point, we're done! Just apply the theme and attach the figure
     #   to the rest of the document, then setup the update callback
