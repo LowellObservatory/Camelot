@@ -143,9 +143,8 @@ def crop_image(nc, data, clat, clon, pCoeff=None):
     latMax = clat + latWid
 
     # Create a grid at at the specified resolution; original default was
-    #   0.005 degrees or 18 arcseconds resolution
-    # gridRes = 18./60./60.
-    gridRes = 30./60./60.
+    #   0.005 degrees or 18 arcseconds resolution, though I don't remember why
+    gridRes = 18./60./60.
     lats = np.arange(latMin, latMax, gridRes)
     lons = np.arange(lonMin, lonMax, gridRes)
     lons, lats = np.meshgrid(lons, lats)
