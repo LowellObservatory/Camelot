@@ -97,27 +97,57 @@ def G16_ABI_L2_ProjDef(nc):
     return old_grid
 
 
-def crop_image(nc, data, clat, clon, latWid=3.5, lonWid=3.5, pCoeff=None):
+def crop_image(nc, data, clat, clon, pCoeff=None):
     # Parse/grab the existing projection information
     old_grid = G16_ABI_L2_ProjDef(nc)
 
     # pr.plot.show_quicklook(old_grid, data, coast_res='10m')
 
-    # Output grid centered on clat, clon. Symmetric in each extent
-    #   though not necessarily symmetric in Lat/Lon
+    # Output grid centered on clat, clon
+    # latWid = 3.5
+    # lonWid = 3.5
     # lonMin = clon - lonWid
     # lonMax = clon + lonWid
     # latMin = clat - latWid
     # latMax = clat + latWid
 
-    # Handpicked favorites
-    lonMin = clon - lonWid
-    lonMax = clon + lonWid - 1.0
-    latMin = clat - latWid
-    latMax = clat + latWid - 0.75
+    # Handpicked favorites; generates all of AZ centered on the DCT
+    # latWid = 3.5
+    # lonWid = 3.5
+    # lonMin = clon - lonWid
+    # lonMax = clon + lonWid - 1.0
+    # latMin = clat - latWid
+    # latMax = clat + latWid - 0.75
 
-    lats = np.arange(latMin, latMax, 0.005)
-    lons = np.arange(lonMin, lonMax, 0.005)
+    # Zoomed in portion around the DCT, showing an approximate radius
+    #   of 'desiredRadius' statute miles.
+    # To do this right it's easier to think in terms of nautical miles;
+    #   See https://github.com/LowellObservatory/Camelot/issues/5 for the math.
+
+    # In *statute miles* since they're easier to measure (from Google Maps)
+    desiredRadius = 150.
+
+    # Now it's in nautical miles so we just continue
+    dRnm = desiredRadius/1.1507794
+    latWid = dRnm/60.
+    lonWid = dRnm/(np.cos(np.deg2rad(clat))*60.)
+
+    # Small fudge factor to make the aspect a little closer to 1:1
+    latWid += 0.053
+
+    print(latWid, lonWid)
+
+    lonMin = clon - lonWid
+    lonMax = clon + lonWid
+    latMin = clat - latWid
+    latMax = clat + latWid
+
+    # Create a grid at at the specified resolution; original default was
+    #   0.005 degrees or 18 arcseconds resolution
+    # gridRes = 18./60./60.
+    gridRes = 30./60./60.
+    lats = np.arange(latMin, latMax, gridRes)
+    lons = np.arange(lonMin, lonMax, gridRes)
     lons, lats = np.meshgrid(lons, lats)
 
     swath_def = pr.geometry.SwathDefinition(lons=lons, lats=lats)
@@ -431,8 +461,8 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             #   compression algorithm needs an even number divisor
             figsize = (7., np.round(7./paspect, decimals=2))
 
-            # print(prlon, prlat, paspect)
-            # print(figsize)
+            print(prlon, prlat, paspect)
+            print(figsize)
 
             # Figure creation
             fig = plt.figure(figsize=figsize, dpi=100)
