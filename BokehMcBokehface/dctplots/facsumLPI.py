@@ -45,29 +45,27 @@ def dataGatherer(m, qdata):
     # Common "now" time to compare everything against
     now = np.datetime64(dt.datetime.utcnow())
 
-    # Now the tedious bit - reassemble the shredded parameters like RA/Dec/etc.
-    #   Whomever designed the TCS XML...know that I'm not a fan of your work.
-    #
-    # 'deshred' will automatically take the last entry and return a
-    #   non-annoying version with its timestamp for later display.
-    mirrorcov = bplot.getLast(r, "MirrorCover", comptime=now)
-
     # These are from other data sources, so get their values too
-    domeshut = bplot.getLast(r2, "DomeShutter", comptime=now)
-    instcover = bplot.getLast(r3, "InstCover", comptime=now)
+    domeshut = bplot.getLast(r2, "DomeShutter", compTime=now)
+    mirrorcov = bplot.getLast(r, "MirrorCover", compTime=now)
 
-    portT = bplot.getLast(r4, 'PortThru', comptime=now)
-    portA = bplot.getLast(r4, 'PortA', comptime=now)
-    portB = bplot.getLast(r4, 'PortB', comptime=now)
-    portC = bplot.getLast(r4, 'PortC', comptime=now)
-    portD = bplot.getLast(r4, 'PortD', comptime=now)
+    # We use the nullVal parameter for these so we can catch the
+    #   .likelyInvalid parameters in the final table data collection since
+    #   they have special logic a little down below
+    instcover = bplot.getLast(r3, "InstCover", compTime=now, nullVal=-1)
+
+    portT = bplot.getLast(r4, 'PortThru', compTime=now, nullVal=-1)
+    portA = bplot.getLast(r4, 'PortA', compTime=now, nullVal=-1)
+    portB = bplot.getLast(r4, 'PortB', compTime=now, nullVal=-1)
+    portC = bplot.getLast(r4, 'PortC', compTime=now, nullVal=-1)
+    portD = bplot.getLast(r4, 'PortD', compTime=now, nullVal=-1)
 
     m2piston = bplot.getLast(r5, 'M2PistonDemand',
-                             label="Demand M2 Piston", nullVal=-1,
-                             comptime=now, scaleFactor=1e6, fstr="%.3f")
+                             label="Demand M2 Piston",
+                             compTime=now, scaleFactor=1e6, fstr="%.3f")
     totfocus = bplot.getLast(r5, 'totalFocusOffset',
-                             label="Total Focus Offset", nullVal=-1,
-                             comptime=now, scaleFactor=1e6, fstr="%.3f")
+                             label="Total Focus Offset",
+                             compTime=now, scaleFactor=1e6, fstr="%.3f")
 
     # Finally done! Now put it all into a list so it can be passed
     #   back a little easier and taken from there
@@ -82,12 +80,16 @@ def dataGatherer(m, qdata):
             # Special conversion to text for this one
             if each.value == 0:
                 values.append("Closed")
+            elif each.value == -1:
+                values.append(bplot.funnyValues())
             else:
                 values.append("Open")
             labels.append(each.label)
         elif each.label.startswith("Port"):
             if each.value == 0:
                 values.append("Inactive")
+            elif each.value == -1:
+                values.append(bplot.funnyValues())
             else:
                 values.append("Active")
             labels.append(each.label)
@@ -131,6 +133,7 @@ def makeFacSum(doc):
     dtab.width = 390
     dtab.height = 290
     dtab.margin = 0
+    dtab.header_row = False
 
     doc.theme = theme
     doc.title = m.title

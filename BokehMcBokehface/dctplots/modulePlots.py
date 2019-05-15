@@ -38,22 +38,45 @@ class valJudgement(object):
         self.value = None
         self.timestamp = None
         self.tooOld = True
+        self.likelyInvalid = True
 
-    def judgeAge(self, maxage=None, comptime=None):
+    def judgeAge(self, oldAge=None, maxAge=None, compTime=None):
         # Need to put everything into Numpy datetime64/timedelta64 objects
         #   to allow easier interoperations
-        if maxage is None:
-            maxage = dt.timedelta(minutes=5.5)
-            maxage = np.timedelta64(maxage)
+        if maxAge is None:
+            maxAge = dt.timedelta(hours=2.)
+            maxAge = np.timedelta64(maxAge)
+        if oldAge is None:
+            oldAge = dt.timedelta(minutes=5.5)
+            oldAge = np.timedelta64(oldAge)
 
-        if comptime is None:
-            comptime = np.datetime64(dt.datetime.utcnow())
+        if compTime is None:
+            compTime = np.datetime64(dt.datetime.utcnow())
 
-        delta = comptime - self.timestamp
-        if delta > maxage:
+        delta = compTime - self.timestamp
+        if delta > oldAge:
             self.tooOld = True
         else:
             self.tooOld = False
+
+        if delta > maxAge:
+            self.likelyInvalid = True
+        else:
+            self.likelyInvalid = False
+
+
+def funnyValues():
+    """
+    """
+    # Have some fun with it at least
+    ustrs = ["inconceivable", "implausible", "improbable",
+             "unknown", "unfathomable",
+             "unimaginable", "unknowable", "unclear",
+             "mind-boggling"]
+
+    retValue = random.choice(ustrs).upper()
+
+    return retValue
 
 
 def setupTable(cds):
@@ -83,8 +106,9 @@ def setupTable(cds):
     # Now we construct our table by specifying the columns we actually want.
     #   We ignore the 'ageStatement' row for this because we
     #   just get at it via the formatter/template defined above
-    labelCol = TableColumn(field='labels', title='Parameter')
-    valueCol = TableColumn(field='values', title='Value', formatter=formatter)
+    labelCol = TableColumn(field='labels', title='Parameter', sortable=False)
+    valueCol = TableColumn(field='values', title='Value', sortable=False,
+                           formatter=formatter)
     cols = [labelCol, valueCol]
 
     nRows = len(cds.data['labels'])
@@ -229,7 +253,7 @@ def getLastVal(cds, cdstag):
     return fVal
 
 
-def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
+def getLast(p1, fieldname, label=None, lastIdx=None, compTime=None,
             scaleFactor=None, fstr=None, nullVal=None):
     """
     """
@@ -239,15 +263,16 @@ def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
     if not isinstance(p1, pd.DataFrame):
         # Give it a default value
         if nullVal is None:
-            # Have some fun with it at least
-            ustrs = ["unknown", "inconceivable", "unfathomable",
-                     "unimaginable", "unknowable", "unclear"]
-            retObj.value = random.choice(ustrs).upper()
+            retObj.value = funnyValues()
         else:
             retObj.value = nullVal
 
         # Give it a default timestamp
         retObj.timestamp = pd.Timestamp(0, unit='s', tz='UTC').to_datetime64()
+
+        # We already know that it's out of date
+        retObj.tooOld = True
+        retObj.likelyInvalid = True
 
         # Give it a default label
         if label is not None:
@@ -278,7 +303,12 @@ def getLast(p1, fieldname, label=None, lastIdx=None, comptime=None,
         else:
             retObj.label = fieldname
 
-    retObj.judgeAge(comptime=comptime)
+        retObj.judgeAge(compTime=compTime)
+        if retObj.likelyInvalid is True:
+            if nullVal is None:
+                retObj.value = funnyValues()
+            else:
+                retObj.value = nullVal
 
     return retObj
 
@@ -296,8 +326,9 @@ def deshred(plist, failVal=-1, delim=":", name=None):
 
     rstr = ""
     for i, each in enumerate(plist):
-        if each == -1:
-            goodSoFar = False
+        # Catch an invalid value and escape early, so we can write just
+        #   one "bad" value in it
+        if each.value == failVal:
             break
         else:
             # Smoosh it all together; if it's the last value, don't
@@ -318,7 +349,10 @@ def deshred(plist, failVal=-1, delim=":", name=None):
     else:
         fObj.label = name
 
-    fObj.value = rstr
+    if rstr != "":
+        fObj.value = rstr
+    else:
+        fObj.value = funnyValues()
 
     return fObj
 
