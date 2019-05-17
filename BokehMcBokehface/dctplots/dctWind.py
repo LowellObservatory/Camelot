@@ -103,7 +103,7 @@ def make_plot(doc):
     # A dict of helpful plot labels
     ldict = {'title': "DCT Weather Information",
              'xlabel': "Time (UTC)",
-             'y1label': "Wind Speed (m/s)"}
+             'y1label': "Wind Speed (mi/h)"}
 
     # Since we haven't plotted anything yet, we don't have a decent idea
     #   of the bounds that we make our patches over. So just do that manually.
