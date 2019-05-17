@@ -43,6 +43,13 @@ def dataGatherer(m, qdata, timeFilter=None, fillNull=True, debug=True):
     # For now, I'm ignoring the wind direction information. Will revisit.
     r = r.drop("WindDir2MinAvg", axis=1)
 
+    # Adjust the units from mph to m/s (
+    #   Decided to be super pedantic and break it down to the fundamental
+    #   definition of 1 inch == 2.54 cm.  Silly, I know.  Whatever.
+    imperialToMetric = (63360./(60.*60.))*(0.0254)
+    r.WindSpeed2MinAvg = r.WindSpeed2MinAvg * imperialToMetric
+    r.WindSpeed60MinMax = r.WindSpeed60MinMax * imperialToMetric
+
     if timeFilter is None:
         rj = r
         if fillNull is True:
@@ -103,7 +110,7 @@ def make_plot(doc):
     # A dict of helpful plot labels
     ldict = {'title': "DCT Weather Information",
              'xlabel': "Time (UTC)",
-             'y1label': "Wind Speed (mi/h)"}
+             'y1label': "Wind Speed (m/s)"}
 
     # Since we haven't plotted anything yet, we don't have a decent idea
     #   of the bounds that we make our patches over. So just do that manually.
