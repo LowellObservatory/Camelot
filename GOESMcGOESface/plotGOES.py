@@ -125,7 +125,7 @@ def crop_image(nc, data, clat, clon, pCoeff=None):
     #   See https://github.com/LowellObservatory/Camelot/issues/5 for the math.
 
     # In *statute miles* since they're easier to measure (from Google Maps)
-    desiredRadius = 150.
+    desiredRadius = 200.
 
     # Now it's in nautical miles so we just continue
     dRnm = desiredRadius/1.1507794
@@ -133,7 +133,7 @@ def crop_image(nc, data, clat, clon, pCoeff=None):
     lonWid = dRnm/(np.cos(np.deg2rad(clat))*60.)
 
     # Small fudge factor to make the aspect a little closer to 1:1
-    latWid += 0.053
+    latWid += 0.093
 
     print(latWid, lonWid)
 
@@ -188,15 +188,6 @@ def crop_image(nc, data, clat, clon, pCoeff=None):
     #   a wrapper for the above two-step dance.
     # pData = pr.kd_tree.resample_nearest(old_grid, data, area_def,
     #                                     radius_of_influence=5000)
-
-    # Change the fill value of the masked array to actually be the value.
-    #   This is so it can be plotted and controlled via the colorbar rather
-    #   than just making an all white image or whatever.
-    #
-    # Yes, I made this a magic value.  The proper value depends on the choices
-    #   made in the getCmap function below, and this one looks good and is
-    #   consistent with the average color of the ground. Did it by eye.
-    pData = np.ma.filled(pData, fill_value=285.)
 
     return old_grid, area_def, pData, pCoeff
 
@@ -466,14 +457,16 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             # Figure creation
             fig = plt.figure(figsize=figsize, dpi=100)
 
-            fig.patch.set_facecolor("black")
-
             # Needed to remove any whitespace/padding around the imshow()
             plt.subplots_adjust(left=0., right=1., top=1., bottom=0.)
 
             # Tell matplotlib we're using a map projection so cartopy
             #   takes over and overloades Axes() with GeoAxes()
             ax = plt.axes(projection=crs)
+
+            # This actually sets the background map color so it's darker
+            #   when there's no data or missing data.
+            ax.background_patch.set_facecolor('#262629')
 
             # Some custom stuff
             ax = add_map_features(ax, roads=roads)
