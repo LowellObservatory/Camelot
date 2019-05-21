@@ -226,7 +226,7 @@ def getCmap():
     return nwsref
 
 
-def literallyDeBug(radar):
+def literallyDeBug(radar, vcpmode):
     """
     Apply rudimentary quality control, as done in the example by
     Valliappa Lakshmanan.
@@ -263,7 +263,15 @@ def literallyDeBug(radar):
 
     # Reflectivity values less than some cutoff point
     #   value originally was 20
-    refLow = np.less(refl_grid, 0)
+    # The logic below attempts to account for the radar scan operating
+    #   in "Clear Air Mode" which can result in valid values < 0.  If that's
+    #   the scan type, we set a super low bar for reflectivity filtering
+    #   otherwise we choose a low-ish value to try to eliminate fuzziness
+    if vcpmode in [31, 32, 35]:
+        refCutVal = -40
+    else:
+        refCutVal = 5
+    refLow = np.less(refl_grid, refCutVal)
 
     # Differential reflectivity greater than some cutoff point
     #   Note that this is doing abs() first, so it's filtering out both ends
@@ -342,14 +350,18 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
 
             dprod = radar.metadata['original_container']
 
+            # Get the VCP mode (specific radar scan mode); see also:
+            # https://www.weather.gov/jetstream/vcp_max
+            vcpmode = radar.metadata['vcp_pattern']
+
             # Pull out the time stamp; skip the site name
             fullts = os.path.basename(each)[4:]
             tend = dt.strptime(fullts, "%Y%m%d_%H%M%S")
 
             # Filter out crud that is probably bugs and stuff,
             #   good enough for what we're doing
-            qcradar = literallyDeBug(radar)
-            display = RadarMapDisplay(qcradar)
+            qcradar = literallyDeBug(radar, vcpmode)
+            display = RadarMapDisplay(qcradar, )
 
             latMin, latMax, lonMin, lonMax = set_plot_extent(cLat, cLon)
 
@@ -426,7 +438,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
 
             # We don't need microseconds shown on this plot
             tendstr = tend.strftime("%Y-%m-%d  %H:%M:%SZ")
-            line2 = "%s" % (tendstr)
+            line2 = "VCP MODE %03d  %s" % (vcpmode, tendstr)
             line2 = line2.upper()
 
             # Black background for top label text
