@@ -2,6 +2,10 @@
 #   as required for the DCTStack/DataServants
 FROM pytest
 
+# Not every image needs this, so we'll do it as a one-off in here
+USER root:root
+RUN conda install -y -c conda-forge arm_pyart
+
 USER lig:lig
 WORKDIR /home/lig/Codes/
 COPY --chown=lig:lig . ./RadarLove/

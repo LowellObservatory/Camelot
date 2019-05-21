@@ -24,12 +24,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 
-import pyart.graph.cm as pyartcm
 from pyart.io import read_nexrad_archive
 from pyart.graph import RadarMapDisplay
-
-from metpy.io import Level2File
-from metpy.plots import colortables
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat

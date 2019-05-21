@@ -16,7 +16,6 @@ from __future__ import division, print_function, absolute_import
 import os
 import time
 import glob
-import subprocess as subp
 import configparser as conf
 from shutil import copyfile
 from datetime import datetime as dt
