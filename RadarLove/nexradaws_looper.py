@@ -8,7 +8,7 @@
 #
 #  @author: rhamilton
 
-"""Main loop for GOES-16 reprojection and animation service.
+"""Main loop for NEXRAD plotting service.
 """
 
 from __future__ import division, print_function, absolute_import

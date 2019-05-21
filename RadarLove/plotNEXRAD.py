@@ -8,7 +8,7 @@
 #
 #  @author: rhamilton
 
-"""Actually plot the GOES-16 data.
+"""Actually plot the NEXRAD data.
 """
 
 from __future__ import division, print_function, absolute_import
