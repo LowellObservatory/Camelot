@@ -54,7 +54,7 @@ def getFilenameAgeDiff(fname, now, dtfmt="%Y%j%H%M%S%f"):
     # Need to basename it to get just the actual filename and not the path
     beach = os.path.basename(fname)
     try:
-        dts = dt.strptime(beach.split("_")[0], dtfmt)
+        dts = dt.strptime(beach, dtfmt)
         diff = (now - dts).total_seconds()
     except Exception as err:
         # TODO: Catch the right datetime conversion error!
@@ -110,7 +110,7 @@ def main(outdir, creds, sleep=150., keephours=24.,
     latestname = '%s/nexradaws_latest.png' % (lout)
 
     # Need this for parsing the filename into a dt obj
-    dtfmt = "%Y%j%H%M%S%f"
+    dtfmt = "KFSX%Y%m%d_%H%M%S"
 
     # Prepare some things for plotting so we don't have to do it
     #   forever in the main loop body
@@ -155,8 +155,9 @@ def main(outdir, creds, sleep=150., keephours=24.,
         fudge = 1.
         # BUT only do anything if we actually made a new file!
         if nplots > 0:
+            dtfmtpng = dtfmt + '.png'
             cpng = clearOldFiles(pout, "*.png", when,
-                                 maxage=keephours+fudge, dtfmt=dtfmt)
+                                 maxage=keephours+fudge, dtfmt=dtfmtpng)
             craw = clearOldFiles(dout, "*", when,
                                  maxage=keephours+fudge, dtfmt=dtfmt)
 
@@ -205,7 +206,7 @@ if __name__ == "__main__":
     outdir = "./outputs/"
     awsconf = "./awsCreds.conf"
     forceDownloads = False
-    forceRegenPlot = True
+    forceRegenPlot = False
     logname = './logs/radarlove.log'
 
     # Set up logging (using ligmos' quick 'n easy wrapper)
