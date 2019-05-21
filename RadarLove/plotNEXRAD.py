@@ -19,19 +19,17 @@ import os
 from datetime import datetime as dt
 
 import numpy as np
-import pyresample as pr
-from scipy import ndimage, signal
 
-from matplotlib import cm
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
-from matplotlib.colors import ListedColormap
 
 import pyart.graph.cm as pyartcm
-from pyart.util import interval_std
-from pyart.config import get_metadata
 from pyart.io import read_nexrad_archive
 from pyart.graph import RadarMapDisplay
+
+from metpy.io import Level2File
+from metpy.plots import colortables
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
@@ -72,6 +70,7 @@ def set_plot_extent(clat, clon):
     #   See https://github.com/LowellObservatory/Camelot/issues/5 for the math.
 
     # In *statute miles* since they're easier to measure (from Google Maps)
+    # desiredRadius = 150.
     desiredRadius = 150.
 
     # Now it's in nautical miles so we just continue
@@ -215,37 +214,16 @@ def add_AZObs(ax):
 
 
 def getCmap():
-    newcmp = pyartcm.NWSRef
+    # Pulled by hand from the NWS NEXRAD plots
+    ct = ["#ccffff", "#cc99cc", "#996699", "#663366", "#cccc99", "#999966",
+          "#646464", "#04e9e7", "#019ff4", "#0300f4", "#02fd02", "#01c501",
+          "#008e00", "#fdf802", "#e5bc00", "#fd9500", "#fd0000", "#d40000",
+          "#bc0000", "#f800fd", "#9854c6", "#fdfdfd"]
+    cl = range(-30, 75, 5)
+    nwsref = mcolors.from_levels_and_colors(cl, ct, extend='both')
+    nwsref[0].name = "NWSRefNoND"
 
-    cdata = [(0.39215686274509803, 0.39215686274509803, 0.39215686274509803),
-             (0.8, 1.0, 1.0),
-             (0.8, 0.6, 0.8),
-             (0.6, 0.4, 0.6),
-             (0.4, 0.2, 0.4),
-             (0.8, 0.8, 0.6),
-             (0.6, 0.6, 0.4),
-             (0.39215686274509803, 0.39215686274509803, 0.39215686274509803),
-             (0.01568627450980392, 0.9137254901960784, 0.9058823529411765),
-             (0.00392156862745098, 0.6235294117647059, 0.9568627450980393),
-             (0.011764705882352941, 0.0, 0.9568627450980393),
-             (0.00784313725490196, 0.9921568627450981, 0.00784313725490196),
-             (0.00392156862745098, 0.7725490196078432, 0.00392156862745098),
-             (0.0, 0.5568627450980392, 0.0),
-             (0.9921568627450981, 0.9725490196078431, 0.00784313725490196),
-             (0.8980392156862745, 0.7372549019607844, 0.0),
-             (0.9921568627450981, 0.5843137254901961, 0.0),
-             (0.9921568627450981, 0.0, 0.0),
-             (0.8313725490196079, 0.0, 0.0),
-             (0.7372549019607844, 0.0, 0.0),
-             (0.9725490196078431, 0.0, 0.9921568627450981),
-             (0.596078431372549, 0.32941176470588235, 0.7764705882352941),
-             (0.9921568627450981, 0.9921568627450981, 0.9921568627450981)]
-
-    NWS = {"NWSMetPy": cdata}
-
-    # TODO: Finish up making the NWS thing above a proper matplotlib colormap
-
-    return newcmp
+    return nwsref
 
 
 def literallyDeBug(radar):
@@ -255,22 +233,53 @@ def literallyDeBug(radar):
 
     See the full notebook at:
     https://github.com/lakshmanok/nexradaws/blob/master/nexrad_sample.ipynb
+
+    This is also helpful:
+    https://www.radarscope.app/guide/radarscope-products-dual-polarization
+
+    As is this:
+    https://www.ncdc.noaa.gov/data-access/radar-data/nexrad-products
+
+    Differential Reflectivity (ZDR) values are measurements related to the
+    returned energy difference between the vertical and horizontal radar
+    pulses. Large positive values indicate that targets are generally much
+    larger horizontally than vertically. Values near zero indicate the
+    targets are generally spherical. Negative values indicate targets are
+    larger in the vertical than in the horizontal.
+
+    Correlation Coefficient (RHO_hv) values are measurements related to
+    the similarity between the behaviors of the horizontally and vertically
+    polarized pulses and how they are behaving within a pulse volume.
+    Values between 0.95 and 1.0 indicate near uniformity in pulse behavior.
+    Meteorological targets with complex shapes, or with a large degree of
+    variety, will generally have values between 0.85 and 0.95.
+    Biological targets, anthropogenic targets, and ground clutter tend to
+    cause very different behaviors between the pulses, resulting in values
+    less than 0.9 (and often less than 0.7).
     """
     refl_grid = radar.get_field(0, 'reflectivity')
     rhohv_grid = radar.get_field(0, 'cross_correlation_ratio')
     zdr_grid = radar.get_field(0, 'differential_reflectivity')
 
-    # was originally 20
-    reflow = np.less(refl_grid, 10)
+    # Reflectivity values less than some cutoff point
+    #   value originally was 20
+    refLow = np.less(refl_grid, 0)
 
-    # was originally 2.3
-    zdrhigh = np.greater(np.abs(zdr_grid), 2.3)
+    # Differential reflectivity greater than some cutoff point
+    #   Note that this is doing abs() first, so it's filtering out both ends
+    #   value originally was 2.3
+    zdrCut = np.greater(np.abs(zdr_grid), 2.0)
 
-    # was originally 0.95
-    rhohvlow = np.less(rhohv_grid, 0.95)
+    # Cross correlation values below a threshold
+    #   value originally was 0.95
+    rhohvLow = np.less(rhohv_grid, 0.90)
 
-    notweather = np.logical_or(reflow, np.logical_or(zdrhigh, rhohvlow))
+    # Combine all of the above into a master mask array. Flag values where:
+    #   Reflectivity < cutoff OR (DifferentialReflectivity is high OR
+    #                             CrossCorrelationRatio is low)
+    notweather = np.logical_or(refLow, np.logical_or(zdrCut, rhohvLow))
 
+    # Generate the masked array from the above
     qcrefl_grid = np.ma.masked_where(notweather, refl_grid)
 
     qced = radar.extract_sweeps([0])
@@ -368,7 +377,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
             fig = plt.figure(figsize=figsize, dpi=100)
 
             # Needed to remove any whitespace/padding around the imshow()
-            # plt.subplots_adjust(left=0., right=1., top=1., bottom=0.)
+            plt.subplots_adjust(left=0., right=1., top=1., bottom=0.)
 
             # Tell matplotlib we're using a map projection so cartopy
             #   takes over and overloades Axes() with GeoAxes()
@@ -387,17 +396,18 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
             ax.set_yticklabels([])
 
             display.plot_ppi_map('reflectivity_masked',
+            # display.plot_ppi_map('reflectivity',
                                  mask_outside=True,
-                                 vmin=-20, vmax=75,
                                  min_lon=lonMin, max_lon=lonMax,
                                  min_lat=latMin, max_lat=latMax,
                                  projection=crs,
                                  fig=fig,
-                                 cmap=cmap,
+                                 cmap=cmap[0],
+                                 norm=cmap[1],
                                  lat_0=siteLat,
                                  lon_0=siteLon,
                                  embelish=False,
-                                 colorbar_flag=True,
+                                 colorbar_flag=False,
                                  title_flag=False,
                                  ticklabs=[],
                                  ticks=[],
