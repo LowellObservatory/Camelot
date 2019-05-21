@@ -210,7 +210,7 @@ if __name__ == "__main__":
     logname = './logs/radarlove.log'
 
     # Set up logging (using ligmos' quick 'n easy wrapper)
-    #logs.setup_logging(logName=logname, nLogs=30)
+    logs.setup_logging(logName=logname, nLogs=30)
 
     creds = parseConfFile(awsconf)
 
