@@ -40,7 +40,8 @@ def readNEXRAD(filename):
     """
     """
     print("Reading: %s" % (filename))
-    dat = read_nexrad_archive(filename)
+    dat = read_nexrad_archive(filename, linear_interp=False)
+    print("Done reading!")
 
     return dat
 
@@ -360,7 +361,9 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
 
             # Filter out crud that is probably bugs and stuff,
             #   good enough for what we're doing
+            print("Debugging...")
             qcradar = literallyDeBug(radar, vcpmode)
+            print("Debugging complete!")
             display = RadarMapDisplay(qcradar, )
 
             latMin, latMax, lonMin, lonMax = set_plot_extent(cLat, cLon)
@@ -407,8 +410,8 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
             ax.set_xticklabels([])
             ax.set_yticklabels([])
 
+            print("Plotting radar data...")
             display.plot_ppi_map('reflectivity_masked',
-            # display.plot_ppi_map('reflectivity',
                                  mask_outside=True,
                                  min_lon=lonMin, max_lon=lonMax,
                                  min_lat=latMin, max_lat=latMax,
@@ -428,6 +431,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
                                  raster=True)
 
             display.plot_point(siteLon, siteLat, symbol='^', color='orange')
+            print("Plotting complete! Finishing up...")
 
             # plt.colorbar()
 
@@ -465,13 +469,12 @@ def makePlots(inloc, outloc, roads=None, cmap=None, forceRegen=False):
             # Useful for testing getCmap changes
             # plt.colorbar()
 
+            print("Saving...")
             plt.savefig(outpname, dpi=100, facecolor='black', frameon=True)
             print("Saved as %s." % (outpname))
             plt.close()
 
-            # Make sure to save the current timestamp for comparison the
-            #   next time through the loop!
-            tprev = tend
             i += 1
+            print("%d plots complete" % (i))
 
     return i
