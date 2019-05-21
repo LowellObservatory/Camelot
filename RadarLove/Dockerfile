@@ -9,5 +9,5 @@ RUN mkdir RadarLove/outputs RadarLove/outputs/pngs RadarLove/outputs/raws RadarL
 
 # Default command to issue when starting this image in a container
 USER lig
-WORKDIR /home/lig/Codes/GOESMcGOESface/
+WORKDIR /home/lig/Codes/RadarLove/
 CMD ["python nexradaws_looper.py"]
