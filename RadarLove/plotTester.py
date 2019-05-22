@@ -21,5 +21,26 @@ import plotNEXRAD as pn
 if __name__ == "__main__":
     inloc = "./inputs/"
     outloc = "./outputs/pngs/"
+    cfiles = "./shapefiles/cb_2018_us_county_5m/"
 
-    pn.makePlots(inloc, outloc, cmap=None, forceRegen=True)
+    # in degrees
+    mapcenter = [-111.4223, 34.7443]
+    filterRadius = 7.
+
+    cmap = pn.getCmap()
+    rclasses = ["Interstate", "Federal"]
+
+    print("Reading road data...")
+    roads = pn.parseRoads(rclasses, center=mapcenter, centerRad=filterRadius)
+    for rkey in rclasses:
+        print("%s: %d found within %d degrees of center" % (rkey,
+                                                            len(roads[rkey]),
+                                                            filterRadius))
+
+    counties = pn.parseCounties(cfiles + "cb_2018_us_county_5m.shp",
+                                center=mapcenter, centerRad=filterRadius)
+    print("%d counties found within %d degrees of center" % (len(counties),
+                                                             filterRadius))
+    pn.makePlots(inloc, outloc, cmap=cmap,
+                 roads=roads, counties=counties,
+                 forceRegen=True)

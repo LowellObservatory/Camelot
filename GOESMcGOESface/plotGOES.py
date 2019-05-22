@@ -29,6 +29,7 @@ from matplotlib.colors import ListedColormap
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
+from cartopy.feature import sgeom
 import cartopy.io.shapereader as cshape
 
 
@@ -192,7 +193,7 @@ def crop_image(nc, data, clat, clon, pCoeff=None):
     return old_grid, area_def, pData, pCoeff
 
 
-def add_map_features(ax, roads=None):
+def add_map_features(ax, counties=None, roads=None):
     ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
     ax.add_feature(cfeat.BORDERS.with_scale('10m'))
 
@@ -203,6 +204,11 @@ def add_map_features(ax, roads=None):
     # Dotted lines for state borders
     ax.add_feature(cfeat.STATES.with_scale('10m'),
                    linestyle=":", edgecolor='black')
+
+    if counties is not None:
+        countfeat = cfeat.ShapelyFeature(counties, ccrs.PlateCarree())
+        ax.add_feature(countfeat, facecolor='none',
+                       edgecolor='#ff0092', alpha=0.25)
 
     if roads is not None:
         # Reminder that roads is a dict with keys:
@@ -235,7 +241,42 @@ def add_map_features(ax, roads=None):
     return ax
 
 
-def parseRoads(rclasses):
+def parseCounties(shpfile, center=None, centerRad=7.):
+    """
+    """
+
+    counties = cshape.Reader(shpfile)
+
+    # If we have coordinates of the center of the map, spatially filter
+    #   the roads down to just those w/in 500 miles of the center
+    spatialFilter = False
+    if center is not None:
+        spatialFilter = True
+        mapCenterPt = sgeom.Point(center[0], center[1])
+
+    clist = []
+    # A dict is far easier to interact with so make one
+    for rec in counties.records():
+        if spatialFilter is True:
+            # Since the geometry coordinates are in lon/lat, the
+            #   corresponding 'dist' will be too; therefore we filter
+            #   based on a radius of N degrees from the center
+            # centerRad = 7 covers a big area so we'll roll with that
+            dist = rec.geometry.distance(mapCenterPt)
+            if dist <= centerRad:
+                store = True
+            else:
+                store = False
+        else:
+            store = True
+
+        if store is True:
+            clist.append(rec.geometry)
+
+    return clist
+
+
+def parseRoads(rclasses, center=None, centerRad=7.):
     """
     See https://www.naturalearthdata.com/downloads/10m-cultural-vectors/roads/
     for field information; below is just a quick summary.
@@ -264,18 +305,40 @@ def parseRoads(rclasses):
 
     rdsrec = cshape.Reader(rds)
 
+    # If we have coordinates of the center of the map, spatially filter
+    #   the roads down to just those w/in 500 miles of the center
+    spatialFilter = False
+    if center is not None:
+        spatialFilter = True
+        mapCenterPt = sgeom.Point(center[0], center[1])
+
     rdict = {}
     # A dict is far easier to interact with so make one
     for rec in rdsrec.records():
         for key in rclasses:
             if rec.attributes['class'] == key:
-                try:
-                    rdict[key].append(rec.geometry)
-                except KeyError:
-                    # This means the key hasn't been created yet so make it
-                    #   and then fill it with the value.
-                    #   It should then work fine the next time
-                    rdict.update({key: [rec.geometry]})
+                # If it's a road class of type we want, test more or store
+                if spatialFilter is True:
+                    # Since the geometry coordinates are in lon/lat, the
+                    #   corresponding 'dist' will be too; therefore we filter
+                    #   based on a radius of N degrees from the center
+                    # centerRad = 7 covers a big area so we'll roll with that
+                    dist = rec.geometry.distance(mapCenterPt)
+                    if dist <= centerRad:
+                        store = True
+                    else:
+                        store = False
+                else:
+                    store = True
+
+                if store is True:
+                    try:
+                        rdict[key].append(rec.geometry)
+                    except KeyError:
+                        # This means the key hasn't been created yet so make it
+                        #   and then fill it with the value.
+                        #   It should then work fine the next time
+                        rdict.update({key: [rec.geometry]})
 
     return rdict
 
@@ -349,8 +412,9 @@ def getCmap(vmin=160, vmax=330, trans=None):
     return newcmp
 
 
-def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
-              forceRegen=False):
+def makePlots(inloc, outloc, roads=None, counties=None,
+              cmap=None, irange=None, forceRegen=False):
+
     # Warning, you may explode
     #  https://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.switch_backend
     plt.switch_backend("Agg")
@@ -360,9 +424,10 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
 
     flist = sorted(glob.glob(inloc + "*.nc"))
 
+    # Just a little helper for at least the roads. We won't do this
+    #   for counties, though, since those datafiles are manually read
     if roads is None:
         rclasses = ["Interstate", "Federal"]
-        # rclasses = ["Interstate", "Federal", "State", "Other"]
 
         # On the assumption that we'll plot something, downselect the full
         #   road database into the subset we want
@@ -469,7 +534,7 @@ def makePlots(inloc, outloc, roads=None, cmap=None, irange=None,
             ax.background_patch.set_facecolor('#262629')
 
             # Some custom stuff
-            ax = add_map_features(ax, roads=roads)
+            ax = add_map_features(ax, counties=counties, roads=roads)
             ax = add_AZObs(ax)
 
             plt.imshow(ndat, transform=crs, extent=crs.bounds, origin='upper',
