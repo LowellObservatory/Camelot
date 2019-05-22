@@ -103,6 +103,11 @@ def main(outdir, creds, sleep=150., keephours=24.,
     dout = outdir + "/raws/"
     pout = outdir + "/pngs/"
     lout = outdir + "/nows/"
+    cfiles = "./shapefiles/cb_2018_us_county_5m/"
+
+    # in degrees; for spatially filtering map shapefiles
+    mapcenter = [-111.4223, 34.7443]
+    filterRadius = 7.
 
     # Filename to copy the last/latest image into for easier web integration
     #   Ok to just hardcopy these since they'll be staticly named
@@ -121,8 +126,18 @@ def main(outdir, creds, sleep=150., keephours=24.,
     print("\tClasses: %s" % (rclasses))
 
     # roads will be a dict with keys of rclasses and values of geometries
-    roads = pnrad.parseRoads(rclasses)
-    print("Roads parsed!")
+    roads = pnrad.parseRoads(rclasses,
+                             center=mapcenter, centerRad=filterRadius)
+    for rkey in rclasses:
+        print("%s: %d found within %d degrees of center" % (rkey,
+                                                            len(roads[rkey]),
+                                                            filterRadius))
+
+    print("Parsing county data...")
+    counties = pnrad.parseCounties(cfiles + "cb_2018_us_county_5m.shp",
+                                   center=mapcenter, centerRad=filterRadius)
+    print("%d counties found within %d degrees of center" % (len(counties),
+                                                             filterRadius))
 
     # Construct/grab the color map. It really just returns the pyart one.
     gcmap = pnrad.getCmap()
@@ -144,7 +159,8 @@ def main(outdir, creds, sleep=150., keephours=24.,
         print("Making the plots...")
         # TODO: Return the projection coordinates (and a timestamp of them)
         #   so they can be reused between loop cycles.
-        nplots = pnrad.makePlots(dout, pout, roads=roads, cmap=gcmap,
+        nplots = pnrad.makePlots(dout, pout, cmap=gcmap,
+                                 roads=roads, counties=counties,
                                  forceRegen=forceRegen)
         print("%03d plots done!" % (nplots))
 
