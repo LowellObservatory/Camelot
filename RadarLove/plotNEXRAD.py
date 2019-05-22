@@ -68,7 +68,7 @@ def set_plot_extent(clat, clon):
 
     # In *statute miles* since they're easier to measure (from Google Maps)
     # desiredRadius = 150.
-    desiredRadius = 150.
+    desiredRadius = 200.
 
     # Now it's in nautical miles so we just continue
     dRnm = desiredRadius/1.1507794
