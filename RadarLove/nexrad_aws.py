@@ -15,8 +15,6 @@ Requires AWS credentials in the awsCreds.conf file.
 
 from __future__ import division, print_function, absolute_import
 
-import glob
-from os import mkdir
 from os.path import basename
 from datetime import timedelta as td
 
@@ -24,27 +22,11 @@ import boto3
 import botocore
 import numpy as np
 
-
-def checkOutDir(outdir):
-    """
-    """
-    # Check if the directory exists, and if not, create it!
-    try:
-        mkdir(outdir)
-    except FileExistsError:
-        pass
-    except Exception as err:
-        # Catch for other (permission?) errors just to be safe for now
-        print(str(err))
-
-    flist = sorted(glob.glob(outdir + "/*"))
-    flist = [basename(each) for each in flist]
-
-    return flist
+import common as com
 
 
 def NEXRADAWSgrab(aws_keyid, aws_secretkey, now, outdir,
-                timedelta=6, forceDown=False):
+                  timedelta=6, forceDown=False):
     """
     AWS IAM user key
     AWS IAM user secret key
@@ -59,7 +41,7 @@ def NEXRADAWSgrab(aws_keyid, aws_secretkey, now, outdir,
     station = "KFSX"
 
     # Check our output directory for files already downloaded
-    donelist = checkOutDir(outdir)
+    donelist = com.checkOutDir(outdir)
 
     # Sample key:
     # 2019/05/17/KFSX/KFSX20190517_000556_V06

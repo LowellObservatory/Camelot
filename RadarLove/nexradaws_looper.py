@@ -15,9 +15,6 @@ from __future__ import division, print_function, absolute_import
 
 import os
 import time
-import glob
-import configparser as conf
-from shutil import copyfile
 from datetime import datetime as dt
 
 from ligmos.utils import logs
@@ -25,67 +22,8 @@ from ligmos.utils import logs
 import nexrad_aws as naws
 import plotNEXRAD as pnrad
 
-
-def parseConfFile(filename):
-    """
-    """
-    try:
-        config = conf.SafeConfigParser()
-        config.read_file(open(filename, 'r'))
-    except IOError as err:
-        config = None
-        print(str(err))
-        return config
-
-    sections = config.sections()
-    tsections = ' '.join(sections)
-
-    print("Found the following sections in the configuration file:")
-    print("%s\n" % tsections)
-
-    return config
-
-
-def getFilenameAgeDiff(fname, now, dtfmt="%Y%j%H%M%S%f"):
-    """
-    NOTE: HERE 'maxage' is already in seconds! Convert before calling.
-    """
-    # Need to basename it to get just the actual filename and not the path
-    beach = os.path.basename(fname)
-    try:
-        dts = dt.strptime(beach, dtfmt)
-        diff = (now - dts).total_seconds()
-    except Exception as err:
-        # TODO: Catch the right datetime conversion error!
-        print(str(err))
-        # Make it "current" to not delete it
-        diff = 0
-
-    return diff
-
-
-def clearOldFiles(inloc, fmask, now, maxage=24., dtfmt="%Y%j%H%M%S%f"):
-    """
-    'maxage' is in hours
-    """
-    maxage *= 60. * 60.
-    flist = sorted(glob.glob(inloc + fmask))
-
-    remaining = []
-    for each in flist:
-        diff = getFilenameAgeDiff(each, now, dtfmt=dtfmt)
-        if diff > maxage:
-            print("Deleting %s since it's too old (%.3f hr)" %
-                  (each, diff/60./60.))
-            try:
-                os.remove(each)
-            except OSError as err:
-                # At least see what the issue was
-                print(str(err))
-        else:
-            remaining.append(each)
-
-    return remaining
+import common as com
+import commonMapping as commap
 
 
 def main(outdir, creds, sleep=150., keephours=24.,
@@ -109,9 +47,8 @@ def main(outdir, creds, sleep=150., keephours=24.,
     mapcenter = [-111.4223, 34.7443]
     filterRadius = 7.
 
-    # Filename to copy the last/latest image into for easier web integration
-    #   Ok to just hardcopy these since they'll be staticly named
-    latestname = '%s/nexradaws_latest.png' % (lout)
+    # What the base/first part of the output filename will be
+    staticname = 'nexrad'
 
     # Need this for parsing the filename into a dt obj
     dtfmt = "KFSX%Y%m%d_%H%M%S"
@@ -126,20 +63,20 @@ def main(outdir, creds, sleep=150., keephours=24.,
     print("\tClasses: %s" % (rclasses))
 
     # roads will be a dict with keys of rclasses and values of geometries
-    roads = pnrad.parseRoads(rclasses,
-                             center=mapcenter, centerRad=filterRadius)
+    roads = commap.parseRoads(rclasses,
+                              center=mapcenter, centerRad=filterRadius)
     for rkey in rclasses:
         print("%s: %d found within %d degrees of center" % (rkey,
                                                             len(roads[rkey]),
                                                             filterRadius))
 
     print("Parsing county data...")
-    counties = pnrad.parseCounties(cfiles + "cb_2018_us_county_5m.shp",
-                                   center=mapcenter, centerRad=filterRadius)
+    counties = commap.parseCounties(cfiles + "cb_2018_us_county_5m.shp",
+                                    center=mapcenter, centerRad=filterRadius)
     print("%d counties found within %d degrees of center" % (len(counties),
                                                              filterRadius))
 
-    # Construct/grab the color map. It really just returns the pyart one.
+    # Construct/grab the color map
     gcmap = pnrad.getCmap()
 
     print("Starting infinite loop...")
@@ -159,7 +96,7 @@ def main(outdir, creds, sleep=150., keephours=24.,
         print("Making the plots...")
         # TODO: Return the projection coordinates (and a timestamp of them)
         #   so they can be reused between loop cycles.
-        nplots = pnrad.makePlots(dout, pout, cmap=gcmap,
+        nplots = pnrad.makePlots(dout, pout, mapcenter, cmap=gcmap,
                                  roads=roads, counties=counties,
                                  forceRegen=forceRegen)
         print("%03d plots done!" % (nplots))
@@ -171,10 +108,10 @@ def main(outdir, creds, sleep=150., keephours=24.,
         # BUT only do anything if we actually made a new file!
         if nplots > 0:
             dtfmtpng = dtfmt + '.png'
-            cpng = clearOldFiles(pout, "*.png", when,
-                                 maxage=keephours+fudge, dtfmt=dtfmtpng)
-            craw = clearOldFiles(dout, "*", when,
-                                 maxage=keephours+fudge, dtfmt=dtfmt)
+            cpng = com.clearOldFiles(pout, "*.png", when,
+                                     maxage=keephours+fudge, dtfmt=dtfmtpng)
+            craw = com.clearOldFiles(dout, "*", when,
+                                     maxage=keephours+fudge, dtfmt=dtfmt)
 
             print("%d, %d raw and png files remain within %.1f + %.1f hours" %
                   (len(cpng), len(craw), keephours, fudge))
@@ -183,33 +120,12 @@ def main(outdir, creds, sleep=150., keephours=24.,
             # Since they're good filenames we can just sort and take the last
             #   if there are actually any current ones left of course
             nstaticfiles = 48
-            if cpng != []:
-                if len(cpng) < nstaticfiles:
-                    lindex = len(cpng)
-                else:
-                    lindex = nstaticfiles
 
-                # It's easier to do this via reverse list indicies
-                icount = 0
-                for findex in range(-1*lindex, 0, 1):
-                    try:
-                        lname = "%s/nexrad_latest_%03d.png" % (lout, icount)
-                        icount += 1
-                        copyfile(cpng[findex], lname)
-                    except Exception as err:
-                        # TODO: Figure out the proper/specific exception
-                        print(str(err))
-                        print("WHOOPSIE! COPY FAILED")
-
-                # Put the very last file in the last file slot
-                latest = cpng[-1]
-                try:
-                    copyfile(latest, latestname)
-                    print("Latest file copy done!")
-                except Exception as err:
-                    # TODO: Figure out the proper/specific exception to catch
-                    print(str(err))
-                    print("WHOOPSIE! COPY FAILED")
+            # Move our files to the set of static filenames. This will
+            #   check (cpng) to see if there are actually any files that
+            #   are new, and if so it'll shuffle the files into the correct
+            #   order of static filenames.
+            com.copyStaticFilenames(nstaticfiles, lout, staticname, cpng)
         else:
             print("No new files downloaded so skipping all actions.")
 
@@ -227,7 +143,7 @@ if __name__ == "__main__":
     # Set up logging (using ligmos' quick 'n easy wrapper)
     logs.setup_logging(logName=logname, nLogs=30)
 
-    creds = parseConfFile(awsconf)
+    creds = com.parseConfFile(awsconf)
 
     main(outdir, creds, forceDown=forceDownloads, forceRegen=forceRegenPlot)
     print("Exiting!")
