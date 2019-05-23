@@ -11,6 +11,8 @@ Prototype for figuring out the details of using bokeh server to query a database
 and stream updates/new data to the plot without having to force a full refresh, to be integrated
 into the NightWatch project to visualize DCT data.
 
+*Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)*
+
 ## CentroidMcCentroidface
 
 Created to quickly assess centroid/tracking quality for the Lowell 31" at Anderson Mesa.
@@ -28,8 +30,19 @@ Prototype for assessing all sky camera images and coming up with a 'cloudiness' 
 Prototype for grabbing the current GOES-16 data and manipulating it ourselves for display,
 so we don't have to depend on anything else for the DCT & NightWatch.
 
+*Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)*
+
+## RadarLove
+
+Prototype for grabbing and plotting the current NEXRAD radar for a particular radar site.
+Same raison d'être as GOESMcGOESFace.
+
+*Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)*
+
 ## WebcamMcWebcamface
 
 Prototype for grabbing the current image from a webcam or set of webcams. 
 Can be used with any webam that has a simple cgi-bin type interface that returns a picture 
 when you issue an authenticated HTTP GET request to the right URL.
+
+*Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)*
