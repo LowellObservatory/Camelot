@@ -21,9 +21,7 @@ from cartopy.feature import sgeom
 import cartopy.io.shapereader as cshape
 
 
-def set_plot_extent(clat, clon):
-    # pr.plot.show_quicklook(old_grid, data, coast_res='10m')
-
+def set_plot_extent(clat, clon, radius=200., fudge=0.053):
     # Output grid centered on clat, clon
     # latWid = 3.5
     # lonWid = 3.5
@@ -46,8 +44,7 @@ def set_plot_extent(clat, clon):
     #   See https://github.com/LowellObservatory/Camelot/issues/5 for the math.
 
     # In *statute miles* since they're easier to measure (from Google Maps)
-    # desiredRadius = 150.
-    desiredRadius = 200.
+    desiredRadius = radius
 
     # Now it's in nautical miles so we just continue
     dRnm = desiredRadius/1.1507794
@@ -55,7 +52,7 @@ def set_plot_extent(clat, clon):
     lonWid = dRnm/(np.cos(np.deg2rad(clat))*60.)
 
     # Small fudge factor to make the aspect a little closer to 1:1
-    latWid += 0.053
+    latWid += fudge
 
     print(latWid, lonWid)
 
@@ -68,6 +65,8 @@ def set_plot_extent(clat, clon):
 
 
 def add_map_features(ax, counties=None, roads=None):
+    """
+    """
     ax.add_feature(cfeat.COASTLINE.with_scale('10m'))
     ax.add_feature(cfeat.BORDERS.with_scale('10m'))
 
@@ -115,14 +114,29 @@ def add_map_features(ax, counties=None, roads=None):
     return ax
 
 
+def checkGeomDistance(centerPt, rec, centerRad):
+    """
+    """
+    # Since the geometry coordinates are in lon/lat, the
+    #   corresponding 'dist' will be too; therefore we filter
+    #   based on a radius of N degrees from the center
+    # centerRad == 7 covers a big area so we'll roll with that
+    dist = rec.geometry.distance(centerPt)
+    if dist <= centerRad:
+        store = True
+    else:
+        store = False
+
+    return store
+
+
 def parseCounties(shpfile, center=None, centerRad=7.):
     """
     """
-
     counties = cshape.Reader(shpfile)
 
-    # If we have coordinates of the center of the map, spatially filter
-    #   the roads down to just those w/in 500 miles of the center
+    # If we have coordinates of the center of the map, enable
+    #   spatial filtering of the roads to within some radius of center
     spatialFilter = False
     if center is not None:
         spatialFilter = True
@@ -132,15 +146,7 @@ def parseCounties(shpfile, center=None, centerRad=7.):
     # A dict is far easier to interact with so make one
     for rec in counties.records():
         if spatialFilter is True:
-            # Since the geometry coordinates are in lon/lat, the
-            #   corresponding 'dist' will be too; therefore we filter
-            #   based on a radius of N degrees from the center
-            # centerRad = 7 covers a big area so we'll roll with that
-            dist = rec.geometry.distance(mapCenterPt)
-            if dist <= centerRad:
-                store = True
-            else:
-                store = False
+            store = checkGeomDistance(mapCenterPt, rec, centerRad)
         else:
             store = True
 
@@ -191,17 +197,8 @@ def parseRoads(rclasses, center=None, centerRad=7.):
     for rec in rdsrec.records():
         for key in rclasses:
             if rec.attributes['class'] == key:
-                # If it's a road class of type we want, test more or store
                 if spatialFilter is True:
-                    # Since the geometry coordinates are in lon/lat, the
-                    #   corresponding 'dist' will be too; therefore we filter
-                    #   based on a radius of N degrees from the center
-                    # centerRad = 7 covers a big area so we'll roll with that
-                    dist = rec.geometry.distance(mapCenterPt)
-                    if dist <= centerRad:
-                        store = True
-                    else:
-                        store = False
+                    store = checkGeomDistance(mapCenterPt, rec, centerRad)
                 else:
                     store = True
 
