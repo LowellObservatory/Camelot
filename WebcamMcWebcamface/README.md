@@ -1,4 +1,6 @@
-## Webcam Mc Webcamface
+# Webcam Mc Webcamface
+
+## NOTE: Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)
 
 Experiment to grab the latest images from either a single or a set
 of IP webcams.  Specifically this is known to work with:
