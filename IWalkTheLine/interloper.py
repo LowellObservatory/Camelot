@@ -85,7 +85,7 @@ if __name__ == "__main__":
     # Now we're all set. In the final version this will just be a single-shot
     #   call, but again, we're testing here!
     while True:
-        sleepTime = random.randint(10, 40)
+        sleepTime = random.randint(0, 5)
         cmd2 = {commandkey: commandval}
 
         packet = constructCMDPacket([cmd2], debug=True)
@@ -95,5 +95,5 @@ if __name__ == "__main__":
         conn.publish(commandTopic, packet, debug=True)
         conn.disconnect()
 
-        print("Sleeping for %d seconds" % (sleepTime))
+        print("Sleeping for %f seconds" % (sleepTime))
         time.sleep(sleepTime)

@@ -15,6 +15,7 @@ from __future__ import division, print_function, absolute_import
 
 import os
 import sys
+import copy
 import time
 
 from pid import PidFile, PidFileError
@@ -94,7 +95,9 @@ if __name__ == "__main__":
                 print("Done stuff!")
 
                 print("Cleaning out the queue...")
-                checkQueue = crackers.brokerQueue
+                # We NEED deepcopy() here to prevent the loop from being
+                #   confused by a mutation/addition from the listener
+                checkQueue = copy.deepcopy(crackers.brokerQueue)
                 print("%d items in the queue" % len(checkQueue.items()))
                 if checkQueue != {}:
                     for uuid in checkQueue:
