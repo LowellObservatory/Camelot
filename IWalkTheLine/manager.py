@@ -89,14 +89,22 @@ if __name__ == "__main__":
                     print("Connection still valid")
 
                 # Do some stuff!
-                print("Sleeping...")
+                print("Doing some sort of loop ...")
                 time.sleep(15.)
-                if crackers.parsedCmd != {}:
-                    print("New command recievied!")
-                    print(crackers.parsedCmd)
-                    # Clear it out
-                    crackers.parsedCmd = {}
-                print("Done sleeping!")
+                print("Done stuff!")
+
+                print("Cleaning out the queue...")
+                checkQueue = crackers.brokerQueue
+                print("%d items in the queue" % len(checkQueue.items()))
+                if checkQueue != {}:
+                    for uuid in checkQueue:
+                        print("Processing command %s" % (uuid))
+                        print(checkQueue[uuid])
+                        print("Removing it from the queue...")
+                        crackers.brokerQueue.pop(uuid)
+
+                print("Done queue processing!")
+                print("%d items remain in the queue" % len(crackers.brokerQueue.items()))
 
                 # Consider taking a big nap
                 if runner.halt is False:

@@ -16,6 +16,7 @@ Further description.
 from __future__ import division, print_function, absolute_import
 
 import os
+import uuid
 import xmltodict as xmld
 from collections import OrderedDict, MutableMapping
 
@@ -33,7 +34,7 @@ class MrFreezeCommandConsumer(ConnectionListener):
         """
         # Grab all the schemas that are in the ligmos library
         self.schemaDict = utils.amq.schemaDicter()
-        self.parsedCmd = OrderedDict()
+        self.brokerQueue = OrderedDict()
 
     def on_message(self, headers, body):
         """
@@ -76,16 +77,16 @@ class MrFreezeCommandConsumer(ConnectionListener):
 
         # Now send the packet to the right place for processing.
         #   These need special parsing because they're just straight text
-        fields = {}
+        cmddict = {}
         if badMsg is False:
             try:
                 if tname in ['MrFreeze.cmd']:
                     # TODO: Wrap this in a proper try...except
                     #   As of right now, it'll be caught in the "WTF!!!"
                     schema = self.schemaDict[tname]
-                    fields = parserCmdPacket(headers, body,
-                                             schema=schema,
-                                             debug=True)
+                    cmddict = parserCmdPacket(headers, body,
+                                              schema=schema,
+                                              debug=True)
                 else:
                     # Intended to be the endpoint of the auto-XML publisher
                     #   so I can catch most of them rather than explicitly
@@ -103,9 +104,12 @@ class MrFreezeCommandConsumer(ConnectionListener):
                 print(headers)
                 print(body)
                 print("="*11)
-            if fields != {}:
-                # This of course means that fields MUST be a dict
-                self.parsedCmd.update(fields)
+            if cmddict != {}:
+                # This lets us make sure that we remove the right one from
+                #   the queue when it's processed
+                # UUID4 is just a random UUID
+                cmduuid = str(uuid.uuid4())
+                self.brokerQueue.update({cmduuid: cmddict})
 
 
 def parserCmdPacket(hed, msg, schema=None, debug=False):
