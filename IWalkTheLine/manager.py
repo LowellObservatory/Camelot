@@ -22,7 +22,6 @@ from pid import PidFile, PidFileError
 
 from ligmos import utils, workers
 
-import broker
 import listener
 
 
@@ -72,8 +71,8 @@ if __name__ == "__main__":
             #   (helpful to find starts/restarts when scanning thru logs)
             utils.common.printPreamble(p, idict)
 
-            conn, crackers = broker.setupBroker(idict, cblk, ic,
-                                                listener=listener)
+            conn, crackers = utils.amq.setupBroker(idict, cblk, ic,
+                                                   listener=listener)
 
             # Semi-infinite loop
             while runner.halt is False:

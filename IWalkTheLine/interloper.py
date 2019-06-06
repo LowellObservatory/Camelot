@@ -21,8 +21,6 @@ import xmltodict as xmld
 
 from ligmos import utils
 
-import broker
-
 
 def constructCMDPacket(cmdset, debug=False):
     """
@@ -57,9 +55,10 @@ if __name__ == "__main__":
     conftype = utils.common.brokerCommandingTarget
 
     # Actually parse the files and set stuff up
-    idict, cblk = broker.parseBrokerConfig(conf, passes, conftype, debug=True)
-    conn, crackers = broker.setupBroker(idict, cblk, conftype,
-                                        listener=utils.amq.silentSubscriber())
+    idict, cblk = utils.confparsers.parseBrokerConfig(conf, passes,
+                                                      conftype, debug=True)
+    conn, crackers = utils.amq.setupBroker(idict, cblk, conftype,
+                                           listener=utils.amq.silentSubscriber())
 
     # Now that we have all of this, the final product will have command line
     #   switches that link commands to the actions; since this is just a test
