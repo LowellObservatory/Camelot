@@ -1,4 +1,6 @@
-## GOES Mc GOESface
+# GOES Mc GOESface
+
+## NOTE: Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)
 
 Experiment to grab the latest and greatest GOES-16 data from an AWS bucket
 and manipulate it/plot it ourselves to see if it's fast enough for 
