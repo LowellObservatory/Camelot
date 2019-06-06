@@ -32,6 +32,11 @@ so we don't have to depend on anything else for the DCT & NightWatch.
 
 *Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)*
 
+## I Walk the Line
+
+Prototype for figuring out the fine details of loop/queue management with inputs coming from 
+an ActiveMQ broker topic.
+
 ## RadarLove
 
 Prototype for grabbing and plotting the current NEXRAD radar for a particular radar site.
