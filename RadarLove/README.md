@@ -1,10 +1,12 @@
-## Radar Love
+# Radar Love
 
-x
+## NOTE: Further development moved to moved to [NightShift](https://github.com/LowellObservatory/NightShift)
+
+Initial experiment to both download and plot NOAA NEXRAD Level II data. Similar rational as [GOESMcGOESface](https://github.com/LowellObservatory/Camelot/tree/master/GOESMcGOESface).
 
 ### Dear God Why
 
-x
+All the other examples out there were incomplete or broken!
 
 ### Additional Shapefiles
 
