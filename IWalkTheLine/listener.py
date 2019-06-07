@@ -17,12 +17,12 @@ from __future__ import division, print_function, absolute_import
 
 import os
 import uuid
-import xmltodict as xmld
 from collections import OrderedDict, MutableMapping
 
-from stomp.listener import ConnectionListener
-
+import xmltodict as xmld
 import xmlschema as xmls
+
+from stomp.listener import ConnectionListener
 
 from ligmos import utils
 
