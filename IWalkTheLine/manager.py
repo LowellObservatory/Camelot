@@ -76,6 +76,9 @@ if __name__ == "__main__":
             amqtopics = amq.getAllTopics(config, comm)
             amqs = connSetup.connAMQ(comm, amqtopics, amqlistener=amqlistener)
 
+            # Just hardcode this for now. It's a prototype!
+            conn = amqs['broker-dct'][0]
+
             # Semi-infinite loop
             while runner.halt is False:
                 # Check on our connections
