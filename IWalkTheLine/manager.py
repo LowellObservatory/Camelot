@@ -57,9 +57,6 @@ if __name__ == "__main__":
                                                         conftype=conftype,
                                                         logfile=True)
 
-    # ActiveMQ connection checker
-    conn = None
-
     try:
         with PidFile(pidname=mynameis.lower(), piddir=pidpath) as p:
             # Print the preamble of this particular instance
@@ -90,10 +87,13 @@ if __name__ == "__main__":
 
                 print("Cleaning out the queue...")
                 queueActions = amqlistener.emptyQueue()
-
+                print("%d items obtained from the queue" % (len(queueActions)))
+                # Do some more stuff!
                 print("Done queue processing!")
+
+                # Diagnostic output
                 nleft = len(amqlistener.brokerQueue.items())
-                print("%d items remain in the queue" % (nleft))
+                print("%d items still in the queue" % (nleft))
 
                 # Consider taking a big nap
                 if runner.halt is False:
