@@ -6,6 +6,15 @@ and removing them from the queue. Lots and lots of little details meant
 that this had to be a standalone experiment before trying to make a real
 working example.
 
+- manager.py
+  - Runs forever, and is the overall/master process
+- listener.py
+  - Contains the ActiveMQ custom listener used by manager.py
+- interloper.py
+  - Can be run as a one-off, and is the command-line process that
+    sends new requests to the broker, which manager.py then sees and 
+    puts into its queue.
+
 ### Dear God Why
 
 This was a fairly esoteric requirement so I couldn't find many/any good
