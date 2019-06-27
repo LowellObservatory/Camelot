@@ -15,7 +15,6 @@ from __future__ import division, print_function, absolute_import
 
 import os
 import sys
-import copy
 import time
 
 from pid import PidFile, PidFileError
@@ -84,36 +83,17 @@ if __name__ == "__main__":
                 # Check on our connections
                 amqs = amq.checkConnections(amqs, subscribe=True)
 
-                # Double check that the broker connection is still up
-                #   NOTE: conn.connect() handles ConnectionError exceptions
-                if conn.conn is None:
-                    print("No connection at all! Retrying...")
-                    conn.connect(listener=amqlistener)
-                elif conn.conn.transport.connected is False:
-                    print("Connection died! Reestablishing...")
-                    conn.connect(listener=amqlistener)
-                else:
-                    print("Connection still valid")
-
                 # Do some stuff!
                 print("Doing some sort of loop ...")
                 time.sleep(15.)
                 print("Done stuff!")
 
                 print("Cleaning out the queue...")
-                # We NEED deepcopy() here to prevent the loop from being
-                #   confused by a mutation/addition from the listener
-                checkQueue = copy.deepcopy(amqlistener.brokerQueue)
-                print("%d items in the queue" % len(checkQueue.items()))
-                if checkQueue != {}:
-                    for uuid in checkQueue:
-                        print("Processing command %s" % (uuid))
-                        print(checkQueue[uuid])
-                        print("Removing it from the queue...")
-                        amqlistener.brokerQueue.pop(uuid)
+                queueActions = amqlistener.emptyQueue()
 
                 print("Done queue processing!")
-                print("%d items remain in the queue" % len(amqlistener.brokerQueue.items()))
+                nleft = len(amqlistener.brokerQueue.items())
+                print("%d items remain in the queue" % (nleft))
 
                 # Consider taking a big nap
                 if runner.halt is False:

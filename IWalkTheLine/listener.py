@@ -16,6 +16,7 @@ Further description.
 from __future__ import division, print_function, absolute_import
 
 import os
+import copy
 import uuid
 from collections import OrderedDict, MutableMapping
 
@@ -110,6 +111,24 @@ class MrFreezeCommandConsumer(ConnectionListener):
                 # UUID4 is just a random UUID
                 cmduuid = str(uuid.uuid4())
                 self.brokerQueue.update({cmduuid: cmddict})
+
+    def emptyQueue(self):
+        # We NEED deepcopy() here to prevent the loop from being
+        #   confused by a mutation/addition from the listener
+        checkQueue = copy.deepcopy(self.brokerQueue)
+        print("%d items in the queue" % len(checkQueue.items()))
+
+        newactions = []
+
+        if checkQueue != {}:
+            for uuid in checkQueue:
+                print("Processing command %s" % (uuid))
+                print(checkQueue[uuid])
+                print("Removing it from the queue...")
+                action = self.brokerQueue.pop(uuid)
+                newactions.append(action)
+
+        return newactions
 
 
 def parserCmdPacket(hed, msg, schema=None, debug=False):
