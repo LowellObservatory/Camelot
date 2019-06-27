@@ -19,7 +19,8 @@ from collections import OrderedDict
 
 import xmltodict as xmld
 
-from ligmos import utils
+from ligmos.workers import connSetup
+from ligmos.utils import amq, classes, confparsers
 
 
 def constructCMDPacket(cmdset, debug=False):
@@ -52,13 +53,18 @@ if __name__ == "__main__":
     passes = './passwords.conf'
     # This defines the subclass that is filled by the confparser functions
     #   IT IS SITUATIONAL DEPENDENT!
-    conftype = utils.common.brokerCommandingTarget
+    conftype = classes.brokerCommandingTarget
 
     # Actually parse the files and set stuff up
-    idict, cblk = utils.confparsers.parseBrokerConfig(conf, passes,
-                                                      conftype, debug=True)
-    conn, crackers = utils.amq.setupBroker(idict, cblk, conftype,
-                                           listener=utils.amq.silentSubscriber())
+    config, comm = confparsers.parseConfig(conf, conftype, passfile=passes,
+                                           searchCommon=True, enableCheck=True)
+
+    amqlistener = amq.silentSubscriber()
+    amqtopics = amq.getAllTopics(config, comm)
+    amqs = connSetup.connAMQ(comm, amqtopics, amqlistener=amqlistener)
+
+    # Just hardcode this for now. It's a prototype!
+    conn = amqs['broker-dct'][0]
 
     # Now that we have all of this, the final product will have command line
     #   switches that link commands to the actions; since this is just a test
@@ -78,8 +84,8 @@ if __name__ == "__main__":
     replyTopic = None
     for act in actors:
         if commandkey in actors[act]:
-            commandTopic = idict[act].cmdtopic
-            replyTopic = idict[act].replytopic
+            commandTopic = config[act].cmdtopic
+            replyTopic = config[act].replytopic
 
     # Now we're all set. In the final version this will just be a single-shot
     #   call, but again, we're testing here!
@@ -90,7 +96,7 @@ if __name__ == "__main__":
         packet = constructCMDPacket([cmd2], debug=True)
 
         print("Sending test message...")
-        conn.connect(listener=crackers, subscribe=False)
+        conn.connect(listener=amqlistener, subscribe=False)
         conn.publish(commandTopic, packet, debug=True)
         conn.disconnect()
 
