@@ -23,6 +23,8 @@ I admit it could be done cleaner with a different approach.
 I included a batch of 50 raw files to play with, taken near/at full Moon and
 with a patch of clouds passing by.  Should be good to experiment/hack on.
 
+![](./sky.png)
+
 ### Dear God Why
 
 Because an observatory almost always has one of these, but they're hit
