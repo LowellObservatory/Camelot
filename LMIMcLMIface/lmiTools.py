@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
     # This one is a little weird, the summary property just takes a list.
     #   Also the keywords can't be uppercase?  Janky but whatever.
-    summ = rawFiles.summary["obserno", lmikw.obstype, lmikw.ampid,
+    summ = rawFiles.summary["file", lmikw.obstype, lmikw.ampid,
                            lmikw.filtv, lmikw.objname]
 
     summ.pprint_all()
