@@ -71,6 +71,10 @@ class LMIKeywords(object):
         self.parangle = "PARANGLE"
         self.lsidtime = "ST"
 
+        # DCT-specific stuff
+        self.mirrorcover = "M1CVR"
+        self.instcover = "INSTCVR"
+
         # This is just to convert all the keywords to lowercase, because
         #   ccdproc is a little janky and weird with keywords.
         self = convertToLowercase(self)
@@ -143,29 +147,24 @@ def getSingleAmpProperties(amplifierID):
     return ccdProps
 
 
-def subImgs(imglist):
+def makeMasterCalFrame(calCollection, kwmodel, calPath, outCalName,
+                       subOverscan=False, subBias=None, clobber=False):
     """
-    """
-    if len(imglist) == 2:
-        # Subtract the two images and move on
-        pass
-    elif (len(imglist) % 2) == 0:
-        # Do subtractions in sequential pairs ?
-        pass
+    Given a ImageFileCollection of (single) amplifier calibration frames,
+    combine them into a single file used for calibration.
 
-
-def calBiases(biasCollection, kwmodel, calPath, subOverscan=False):
-    """
-    Given a ImageFileCollection of (single) amplifier bias frames,
-    combine them into a single bias file used for calibration.
-
-    If desired, the overscan of the bias can be subtracted before combination.
+    If desired, the overscan can be subtracted before combination.
     You might want to do that sometimes?  The logic should mostly work but
     it's basically untested.
+
+    If subBias is None, no bias frame will be subtracted.  If it's not none,
+    then the value of subBias is assumed to be a filename of a bias file to
+    subtract.  The file must be in calPath.
     """
+    allCalFrames = []
 
     # We just use the generator for the given ImageFileCollection
-    for ccds, fname in biasCollection.ccds(return_fname=True):
+    for ccds, fname in calCollection.ccds(return_fname=True):
         # Grab some header keywords that we'll need
         ampKeywords = getSingleAmpProperties(ccds.header[kwmodel.ampid])
         fitsOverscan = ccds.header[ampKeywords['overscan']]
@@ -213,33 +212,35 @@ def calBiases(biasCollection, kwmodel, calPath, subOverscan=False):
             osubbed = ccds
 
         otrimmed = ccdp.trim_image(osubbed, fits_section=trimreg)
-        outname = "%s/%s" % (calPath, fname)
-        try:
-            otrimmed.write(outname)
-        except OSError:
-            print("OSError! Skipping %s" % (outname))
 
+        if subBias is not None:
+            bfilename = "%s/%s" % (calPath, subBias)
+            bframe = CCDData.read(bfilename)
+            otrimmed = ccdp.subtract_bias(otrimmed, bframe)
 
-def combineBiases(biasCollection, calPath):
-    """
-    """
+        allCalFrames.append(otrimmed)
+
     # memLimit is in bytes; if unspecified, default is 16e9 (14.9 GiB)
     memLimit = 3.5e9
-    combined_bias = ccdp.combine(biasCollection.files,
-                                 method='average',
-                                 sigma_clip=True,
-                                 sigma_clip_low_thresh=5,
-                                 sigma_clip_high_thresh=5,
-                                 sigma_clip_func=np.ma.median,
-                                 sigma_clip_dev_func=mad_std,
-                                 mem_limit=memLimit)
+    combined_cal = ccdp.combine(allCalFrames,
+                                method='average',
+                                sigma_clip=True,
+                                sigma_clip_low_thresh=5,
+                                sigma_clip_high_thresh=5,
+                                sigma_clip_func=np.ma.median,
+                                sigma_clip_dev_func=mad_std,
+                                mem_limit=memLimit)
 
-    combined_bias.meta['combined'] = True
-    outname = "%s/%s" % (calPath, "combined_bias.fits")
+    combined_cal.meta['combined'] = True
+    if subBias is not None:
+        combined_cal.meta['biassub'] = True
+
+    outname = "%s/%s" % (calPath, outCalName)
     try:
-        combined_bias.write(outname)
+        # NOTE: 'clobber' is depreciated in astropy 2.x, it's overwrite now
+        combined_cal.write(outname, overwrite=clobber)
     except OSError:
-        print("File exists!")
+        print("%s already exists!" % (outname))
 
 
 if __name__ == "__main__":
@@ -252,8 +253,10 @@ if __name__ == "__main__":
     lmikw = LMIKeywords()
 
     # For printing out sorting/diagnostic tables at various points
-    kwsummarylist = ["file", lmikw.obstype, lmikw.ampid,
-                     lmikw.filtv, lmikw.objname]
+    kwsummarylist = ["file", lmikw.obstype, lmikw.exptime,
+                     lmikw.ampid, lmikw.filtv, lmikw.objname,
+                     lmikw.ra, lmikw.dec,
+                     lmikw.mirrorcover, lmikw.instcover]
 
 
     rawData = Path(rawDataPath)
@@ -281,9 +284,46 @@ if __name__ == "__main__":
     summ = ampAbiases.summary[kwsummarylist]
     summ.pprint_all()
 
-    # Now actually combine all the biases into the master bias frame
-    calBiases(ampAbiases, lmikw, calDataPath)
+    # Now actually combine all the calibration frame bits
+    #
+    #   NOTE:
+    #   This does it all in memory, so if the images are either large in
+    #   size or number your computer might barf.  You can write out the
+    #   trimmed biases one by one and then combine those if that's the case.
+    #
+    makeMasterCalFrame(ampAbiases, lmikw, calDataPath, "biasCombined.fits",
+                       subOverscan=False, clobber=True)
 
-    calFiles = ImageFileCollection(calData, glob_include=basename)
-    calAbiases = calFiles.filter(**ampAbiasFilter)
-    combineBiases(calAbiases, calDataPath)
+    ampAFilterB = {lmikw.ampid: "A", lmikw.obstype: 'dome flat',
+                   lmikw.filtv: "B"}
+    makeMasterCalFrame(rawFiles.filter(**ampAFilterB), lmikw, calDataPath,
+                       "domeflatBCombined.fits",
+                       subOverscan=False, subBias="biasCombined.fits",
+                       clobber=True)
+
+    ampAFilterV = {lmikw.ampid: "A", lmikw.obstype: 'dome flat',
+                   lmikw.filtv: "V"}
+    makeMasterCalFrame(rawFiles.filter(**ampAFilterV), lmikw, calDataPath,
+                       "domeflatVCombined.fits",
+                       subOverscan=False, subBias="biasCombined.fits",
+                       clobber=True)
+
+    ampAFilterR = {lmikw.ampid: "A", lmikw.obstype: 'dome flat',
+                   lmikw.filtv: "R"}
+    makeMasterCalFrame(rawFiles.filter(**ampAFilterR), lmikw, calDataPath,
+                       "domeflatRCombined.fits",
+                       subOverscan=False, subBias="biasCombined.fits",
+                       clobber=True)
+
+    ampAFilterI = {lmikw.ampid: "A", lmikw.obstype: 'dome flat',
+                   lmikw.filtv: "I"}
+    makeMasterCalFrame(rawFiles.filter(**ampAFilterI), lmikw, calDataPath,
+                       "domeflatICombined.fits",
+                       subOverscan=False, subBias="biasCombined.fits",
+                       clobber=True)
+
+    #
+    # At this point I gave up because the dataset I was using was trash;
+    #   the dome flats were taken on-sky with basically no movement
+    #   so it wasn't worth pursuing any further
+    #
