@@ -17,18 +17,23 @@ Collection of things needed for quick and one-off analysis tasks, such as:
 - Combining a set of flats/biases
 - Bias/flatfielding a set of data
 - ???
+
+(Built with ccdproc v2.0.1, so later versions might break stuff)
 """
 
 import os
 from pathlib import Path
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 import astropy.units as u
-import astropy.io.fits as pyf
+from astropy.stats import mad_std
 
+import ccdproc as ccdp
 from ccdproc import CCDData
 from ccdproc import ImageFileCollection
+from ccdproc.utils.slices import slice_from_string
 
 
 class LMIKeywords(object):
@@ -85,7 +90,7 @@ def convertToLowercase(obj):
     return obj
 
 
-def setSingleAmpProperties(amplifierID):
+def getSingleAmpProperties(amplifierID):
     aid = amplifierID.lower().strip()
     # Assuming single amplifier reads ... for now
     if aid == "a":
@@ -125,7 +130,15 @@ def setSingleAmpProperties(amplifierID):
         trim = "TRIM04"
         overscan = "BIAS04"
 
-    ccdProps = [gainkw, readkw, pixx0, pixx1, pixy0, pixy1, trim, overscan]
+    ccdProps = {"binning": "ccdsum",
+                "gain": gainkw,
+                "readnoise": readkw,
+                "x0": pixx0,
+                "x1": pixx1,
+                "y0": pixy0,
+                "y1": pixy1,
+                "trimsec": trim,
+                "overscan": overscan}
 
     return ccdProps
 
@@ -141,46 +154,136 @@ def subImgs(imglist):
         pass
 
 
-def assembleMasterBias(imglist):
+def calBiases(biasCollection, kwmodel, calPath, subOverscan=False):
     """
-    https://mwcraig.github.io/ccd-as-book/02-04-Combine-bias-images-to-make-master
-    combined_bias = ccdp.combine(calibrated_biases,
-                             method='average',
-                             sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
-                             sigma_clip_func=np.ma.median, sigma_clip_dev_func=mad_std,
-                             mem_limit=350e6
-                            )
+    Given a ImageFileCollection of (single) amplifier bias frames,
+    combine them into a single bias file used for calibration.
+
+    If desired, the overscan of the bias can be subtracted before combination.
+    You might want to do that sometimes?  The logic should mostly work but
+    it's basically untested.
     """
 
-    for file in imglist:
-        ccd = CCDData.read(file, unit= u.adu)
-        ampid = ccd.header[ampKW]
+    # We just use the generator for the given ImageFileCollection
+    for ccds, fname in biasCollection.ccds(return_fname=True):
+        # Grab some header keywords that we'll need
+        ampKeywords = getSingleAmpProperties(ccds.header[kwmodel.ampid])
+        fitsOverscan = ccds.header[ampKeywords['overscan']]
+        trimreg = ccds.header[ampKeywords['trimsec']]
+
+        # Binning for LMI is always symmetric
+        binning = int(ccds.header[ampKeywords['binning']].split(" ")[0])
+
+        if subOverscan is True:
+            # We can't just jump in and use the standard ccdp.subtract_overscan
+            #   because the LMI definitions of BIASnn keywords skip some
+            #   rows, making the image and overscan incompatible shapes.
+            #
+            # We'll just include everything in the subtract_overscan call,
+            #   but we'll record the medianed overscan value for the
+            #   originally specified rows for record keeping.  The extra
+            #   rows are going to be trimmed out in the very next step so
+            #   it's really no biggie.
+            #
+            # TODO: Figure out if this is still the case with multiamps
+            #
+            # Remember; these are unbinned coordinates initially and they're
+            #   already 1-indexed in the DSP/LOIS
+            boty = int(ccds.header[ampKeywords['y0']])
+            topy = int(ccds.header[ampKeywords['y1']]/binning)
+
+            oscanslices = slice_from_string(fitsOverscan, fits_convention=True)
+            oscanreg = ccds[oscanslices]
+            print("Median overscan value: %06d ADU" % np.median(oscanreg))
+
+            # This is for hacking back in the excluded rows
+            foparts = fitsOverscan[1:-1].split(",")
+            foy = foparts[1].split(":")
+            foy = [boty, topy]
+            fitsOverscan = "[%s,%s:%s]" % (foparts[0], foy[0], foy[1])
+            oscanslices = slice_from_string(fitsOverscan, fits_convention=True)
+            oscanreg = ccds[oscanslices]
+
+            # Ok now we can finally call the subtract_overscan function
+            osubbed = ccdp.subtract_overscan(ccds, overscan_axis=1,
+                                             fits_section=fitsOverscan,
+                                             median=True)
+        else:
+            # Just a rename for convienence in the final trimming below
+            osubbed = ccds
+
+        otrimmed = ccdp.trim_image(osubbed, fits_section=trimreg)
+        outname = "%s/%s" % (calPath, fname)
+        try:
+            otrimmed.write(outname)
+        except OSError:
+            print("OSError! Skipping %s" % (outname))
+
+
+def combineBiases(biasCollection, calPath):
+    """
+    """
+    # memLimit is in bytes; if unspecified, default is 16e9 (14.9 GiB)
+    memLimit = 3.5e9
+    combined_bias = ccdp.combine(biasCollection.files,
+                                 method='average',
+                                 sigma_clip=True,
+                                 sigma_clip_low_thresh=5,
+                                 sigma_clip_high_thresh=5,
+                                 sigma_clip_func=np.ma.median,
+                                 sigma_clip_dev_func=mad_std,
+                                 mem_limit=memLimit)
+
+    combined_bias.meta['combined'] = True
+    outname = "%s/%s" % (calPath, "combined_bias.fits")
+    try:
+        combined_bias.write(outname)
+    except OSError:
+        print("File exists!")
 
 
 if __name__ == "__main__":
     # These define the images we actually care about
     rawDataPath = "/home/rhamilton/Scratch/20191015/"
     calDataPath = rawDataPath + "/red/"
-    basename = "lmi."
-    Vfiles = [51, 53, 55, 57, 58, 60, 62, 64]
-    Bfiles = [52, 59]
-    Rfiles = [54, 61]
-    Ifiles = [56, 63]
+    basename = "lmi.*.fits"
 
-    tf = rawDataPath + basename + "%04d" % (1) + ".fits"
-    ccdimg = CCDData.read(tf)
-
+    # This defines all the keyword types to their actual keyword names
     lmikw = LMIKeywords()
+
+    # For printing out sorting/diagnostic tables at various points
+    kwsummarylist = ["file", lmikw.obstype, lmikw.ampid,
+                     lmikw.filtv, lmikw.objname]
+
 
     rawData = Path(rawDataPath)
     calData = Path(calDataPath)
+    calData.mkdir(exist_ok=True)
 
-    rawFiles = ImageFileCollection(rawData, glob_include=basename+"*.fits")
+    rawFiles = ImageFileCollection(rawData, glob_include=basename)
 
     # This one is a little weird, the summary property just takes a list.
     #   Also the keywords can't be uppercase?  Janky but whatever.
-    summ = rawFiles.summary["file", lmikw.obstype, lmikw.ampid,
-                           lmikw.filtv, lmikw.objname]
-
+    summ = rawFiles.summary[kwsummarylist]
     summ.pprint_all()
 
+    # Now comes the ccdproc specific syntax for selecting subsets of the
+    #   above rawFiles ImageFileCollection ...
+    print("Selecting only the biases ...")
+
+    # We do a little dance because the filter takes a **kwd matching the key
+    #   to the value of that key found in the header.
+    # NOTE: I'm only selecting the single/usual amplifier here, but it
+    #   could be expanded in the future to itterate over all amp combos
+    ampAbiasFilter = {lmikw.ampid: "A", lmikw.obstype: 'bias'}
+    ampAbiases = rawFiles.filter(**ampAbiasFilter)
+
+    summ = ampAbiases.summary[kwsummarylist]
+    summ.pprint_all()
+
+    # Now actually combine all the biases into the master bias frame
+    calBiases(ampAbiases, lmikw, calDataPath)
+
+    calFiles = ImageFileCollection(calData, glob_include=basename)
+    calAbiases = calFiles.filter(**ampAbiasFilter)
+    combineBiases(calAbiases, calDataPath)
