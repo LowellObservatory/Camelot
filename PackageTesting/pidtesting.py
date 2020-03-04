@@ -24,7 +24,8 @@ if __name__ == "__main__":
     kill = True
     try:
         epid = utils.pids.check_if_running(pname=mynameis)
-        with pid.PidFile(pidname=mynameis, piddir='/tmp') as p:
+        with pid.PidFile(pidname=mynameis, piddir='/tmp',
+                         allow_samepid=True) as p:
             print(p.filename, p.pid)
             time.sleep(10000)
     except pid.PidFileError as err:
