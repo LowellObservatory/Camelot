@@ -83,54 +83,84 @@ def assessAll(iloc, oloc, mask, hkeys):
     tims = []
 
     flist = sorted(glob(iloc + "/TARGET*.fit.bz2"))
+    print("%d files found in %s" % (len(flist), iloc))
     # Only do stuff if we actually found some files
     if flist != [] and len(flist) > 1:
         checkOutDir(oloc)
 
         for i, each in enumerate(flist):
-            dat, heds = readFITS(each, hkeys)
+            try:
+                dat, heds = readFITS(each, hkeys)
+                failed = False
+            except ValueError:
+                # Ocassionally there will be a bizzaro value like:
+                #   DATE-OBS='2020-04-18T10:55:56.100010:55:56.100000:00:00'
+                #   and UTSTART is similiarly screwed up.
+                #
+                # Skip that file because god knows what else is wrong with
+                #   it internally and it's not worth dealing with
+                print("Unparsable file %s! Bad header card? Skipping it..." %
+                      (os.path.basename(each)))
+                failed = True
 
-            # Mask out the icky stuff
-            dat *= mdata
+            if failed is False:
+                # Mask out the icky stuff
+                dat *= mdata
 
-            # Put it into ADU/s
-            dat = dat/heds['exptime']
-            print(os.path.basename(each), heds['date-obs'])
+                # Put it into ADU/s
+                dat = dat/heds['exptime']
+                dateobs = heds['date-obs']
 
-            if i > 0:
-                tims.append(heds['date-obs'])
-                # sdat = np.abs(dat - odat)
-                sdat = dat - odat
+                print(os.path.basename(each), dateobs, end=' ')
 
-                avgs.append(np.average(sdat))
-                stds.append(np.std(sdat))
-                meds.append(np.median(sdat))
+                if i > 0:
+                    tims.append(dateobs)
+                    # sdat = np.abs(dat - odat)
+                    sdat = dat - odat
 
-                plt.imshow(sdat, origin='lower', cmap='Greys_r',
-                           vmin=0, vmax=50)
+                    tavg = np.average(sdat)
+                    tstd = np.std(sdat)
+                    tmed = np.median(sdat)
+                    avgs.append(tavg)
+                    stds.append(tstd)
+                    meds.append(tmed)
 
-                plt.text(900, 30, ("%s" % (heds['date-obs'])), color='white')
-                plt.savefig('./subbed/simg_%04d.png' % (i))
-                plt.close()
+                    print("%.4f %.4f %.4f" % (tavg, tmed, tstd))
 
-            odat = dat
+                    plt.imshow(sdat, origin='lower', cmap='Greys_r',
+                               vmin=-50, vmax=50)
+
+                    plt.text(800, 30, ("%s" % (heds['date-obs'])),
+                             color='white')
+                    plt.savefig('./subbed/simg_%04d.png' % (i))
+                    plt.close()
+                else:
+                    # No stats to print so just break the line
+                    print()
+                odat = dat
 
         plt.plot(tims, avgs, color='g', label="Avrage")
         plt.plot(tims, meds, color='b', label="Median")
         plt.plot(tims, stds, color='r', label="StdDev")
 
-        # plt.ylim([0, 250])
+        # This should hopefully capture all the things you care about
+        ymin = round(-3.0*np.median(stds), 0)
+        ymax = round(10.0*np.median(stds), 0)
+        print(ymin, ymax)
+
+        plt.ylim([ymin, ymax])
         # plt.ylim([0, 10])
         # plt.ylim([0, 40])
 
-        # majTicks = mdates.HourLocator(interval=1)
-        majTicks = mdates.MinuteLocator(interval=15)
-        minTicks = mdates.MinuteLocator(interval=5)
+        majTicks = mdates.HourLocator(interval=1)
+        # majTicks = mdates.MinuteLocator(interval=15)
+        minTicks = mdates.MinuteLocator(interval=20)
         fmt = mdates.DateFormatter('%m/%d %H:%M')
 
         plt.gca().xaxis.set_major_locator(majTicks)
         plt.gca().xaxis.set_minor_locator(minTicks)
         plt.gca().xaxis.set_major_formatter(fmt)
+        plt.gcf().autofmt_xdate()
 
         plt.legend()
         plt.savefig("./sky.png")
@@ -140,7 +170,7 @@ def assessAll(iloc, oloc, mask, hkeys):
 if __name__ == "__main__":
     # NOTE: FITS file mask is still hardcoded in the assessAll func!
 
-    inloc = './indata/'
+    inloc = '/Users/rhamilton/Scratch/allsky/20200418/'
     outloc = './subbed/'
     mask = './dctallsky_mask_dirty.tiff'
     hkeys = ['exptime', 'date-obs', 'tempamb', 'humidity']
