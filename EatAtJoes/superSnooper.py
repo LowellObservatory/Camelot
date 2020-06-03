@@ -50,7 +50,6 @@ class joeListener(stomp.listener.ConnectionListener):
                 else:
                     # If we want to have the XML as a string:
                     res = {tname: [headers, body]}
-
             except xmld.expat.ExpatError:
                 # This means that XML wasn't found, so it's just a string
                 #   packet with little/no structure. Attach the sub name
