@@ -20,7 +20,7 @@ import datetime as dt
 
 import pytz
 
-from ligmos import utils
+from ligmos import utils, workers
 
 
 def parseMOXA_LS218(fname, inst):
@@ -91,20 +91,25 @@ def parseMOXA_LS218(fname, inst):
 
 
 if __name__ == "__main__":
+    dbconfFile = './dbconf.conf'
+
+    # By doing it this way we ignore the 'enabled' key
+    #    but we avoid contortions needed if using
+    #    utils.confparsers.parseConfig, so it's worth it
+    dbc = utils.confparsers.rawParser(dbconfFile)
+    dbs = workers.confUtils.assignConf(dbc['databaseSetup'],
+                                       utils.classes.baseTarget,
+                                       backfill=True)
+
+    inst = "NIHTS"
     cryodir = "/Users/rhamilton/Scratch/NIHTSCryo/"
 
-    dbhost = 'dbhost'
-    dbport = 8086
-    dbuser = None
-    dbpass = None
-    dbtabl = "moxa_history"
-    inst = "NIHTS"
-
-    database = utils.database.influxobj(host=dbhost,
-                                        port=dbport,
-                                        user=dbuser,
-                                        pw=dbpass,
-                                        tablename=dbtabl)
+    database = utils.database.influxobj(host=dbs.host,
+                                        port=dbs.port,
+                                        user=dbs.user,
+                                        pw=dbs.password,
+                                        tablename=dbs.tablename,
+                                        connect=True)
 
     lfiles = sorted(glob(cryodir + "log_NIHTS_Lakeshore218.*"))
     print("%d LS218 logs found!" % (len(lfiles)))
@@ -112,5 +117,5 @@ if __name__ == "__main__":
     for lfile in lfiles:
         allpackets = parseMOXA_LS218(lfile, inst)
 
-        database.singleCommit(allpackets, table=database.tablename,
+        database.singleCommit(allpackets, table=dbs.tablename,
                               timeprec='ms')
