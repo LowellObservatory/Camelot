@@ -23,7 +23,7 @@ import pytz
 from ligmos import utils, workers
 
 
-def parseMOXA_LS218(fname, inst):
+def parseMOXA(fname, stupidKeys, metric, expectedFields):
     """
     Just parse the whole damn file one line at a time in one function, so
     I can actually keep track of when the date rollover occurs (if at all).
@@ -34,17 +34,14 @@ def parseMOXA_LS218(fname, inst):
     startdatedt = dt.datetime.strptime(startdate, "%Y%m%d")
     startdatedt = startdatedt.replace(tzinfo=pytz.UTC)
 
-    # Replace these column labels with non-spaced ones so we can just split()
-    stupidKeys = {"FL SHLD": "FLSHLD",
-                  "DET BRK": "DETBRK",
-                  "BIG FOLD": "BIGFOLD"}
-
-    metric = "%s_lakeshore218" % (inst.upper())
-
     headerFound = False
     allpackets = []
     with open(fname) as f:
         for line in f:
+            # For NIHTS vacgauge files, ETX (0x03) is at the end of the line.
+            #   So kill that silly character
+            line = line.replace('\x03', '')
+
             # We need to skip any header lines until we find the one that
             #   starts with some spaces and then "UTC" since that's the label
             #   line that we'll need to disentangle
@@ -60,7 +57,7 @@ def parseMOXA_LS218(fname, inst):
                 if headerFound is True:
                     # Actually parse the guts: a timestamp and 8 sensor temps
                     fields = line.strip().split()
-                    if len(fields) == 9:
+                    if len(fields) == expectedFields:
                         time = fields[0].strip().split(":")
                         lineTime = startdatedt.replace(hour=int(time[0]),
                                                        minute=int(time[1]),
@@ -111,11 +108,44 @@ if __name__ == "__main__":
                                         tablename=dbs.tablename,
                                         connect=True)
 
-    lfiles = sorted(glob(cryodir + "log_NIHTS_Lakeshore218.*"))
-    print("%d LS218 logs found!" % (len(lfiles)))
+    # NOTE: stupidKeys provides a way to rename columns
+
+    # lfiles = sorted(glob(cryodir + "log_NIHTS_Lakeshore218.*"))
+    # print("%d LS218 logs found!" % (len(lfiles)))
+    # stupidKeys = {"FL SHLD": "FLSHLD",
+    #               "DET BRK": "DETBRK",
+    #               "BIG FOLD": "BIGFOLD"}
+    # metric = "%s_lakeshore218" % (inst.upper())
+    # expectedFields = 9
+
+    # lfiles = sorted(glob(cryodir + "log_NIHTS_Lakeshore325.*"))
+    # print("%d LS325 logs found!" % (len(lfiles)))
+    # stupidKeys = {}
+    # metric = "%s_lakeshore325" % (inst.upper())
+    # expectedFields = 7
+
+    # lfiles = sorted(glob(cryodir + "log_NIHTS_vacgauge.*"))
+    # print("%d vacuum logs found!" % (len(lfiles)))
+    # stupidKeys = {"Torr": "Pressure"}
+    # metric = "%s_vactransducer_mks972b" % (inst.upper())
+    # expectedFields = 2
+
+    # lfiles = sorted(glob(cryodir + "log_NIHTS1_cooler.*"))
+    # print("%d Sunpower logs found!" % (len(lfiles)))
+    # stupidKeys = {"TempK": "ColdTip", "Meanpow": "Cmdpow"}
+    # metric = "%s_sunpowergen2_DetectorCooler" % (inst.upper())
+    # expectedFields = 6
+
+    lfiles = sorted(glob(cryodir + "log_NIHTS2_cooler.*"))
+    print("%d Sunpower logs found!" % (len(lfiles)))
+    stupidKeys = {"TempK": "ColdTip", "Meanpow": "Cmdpow"}
+    metric = "%s_sunpowergen2_BenchCooler" % (inst.upper())
+    expectedFields = 6
 
     for lfile in lfiles:
-        allpackets = parseMOXA_LS218(lfile, inst)
-
-        database.singleCommit(allpackets, table=dbs.tablename,
-                              timeprec='ms')
+        allpackets = parseMOXA(lfile, stupidKeys, metric, expectedFields)
+        if allpackets != []:
+            database.singleCommit(allpackets, table=dbs.tablename,
+                                  timeprec='ms')
+        else:
+            print("No valid packets to store in the database!")
