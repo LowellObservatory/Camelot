@@ -73,6 +73,11 @@ if __name__ == "__main__":
             # If we're here, we made it once thru. The above comparison
             #   will fail without this and we'll never reconnect!
             first = False
+            # The message must contain a replyTo Destination - else it's
+            #   ignored.  To retrieve stats on the broker send a empty
+            #   message to ActiveMQ.Statistics.Broker (Queue or Topic)
+            #   with a replyTo set to the destination you want the
+            #   stats returned to.
             conn.publish(statsRequest, "", replyto=statsAnswer, debug=False)
 
             print("Starting a big sleep")
