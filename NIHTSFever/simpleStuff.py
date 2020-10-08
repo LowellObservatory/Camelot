@@ -22,7 +22,7 @@ import ccdproc as ccdp
 from astropy.stats import mad_std
 
 
-def medStack(frameList, outPath, outName, clobber=True):
+def medStack(frameList):
     """
     """
     memLimit = 3.5e9
@@ -37,12 +37,7 @@ def medStack(frameList, outPath, outName, clobber=True):
 
     combined_cal.meta['combined'] = True
 
-    outname = "%s/%s" % (outPath, outName)
-    try:
-        # NOTE: 'clobber' is depreciated in astropy 2.x, it's overwrite now
-        combined_cal.write(outname, overwrite=clobber)
-    except OSError:
-        print("%s already exists!" % (outname))
+    return combined_cal
 
 
 def subtract():
@@ -52,4 +47,16 @@ def subtract():
 
 
 if __name__ == "__main__":
-    medcomb = ""
+    inlist = [""]
+    outPath = "./"
+    outName = "combo.fits"
+    clobber = True
+
+    combined_cal = medStack(inlist)
+
+    outname = "%s/%s" % (outPath, outName)
+    try:
+        # NOTE: 'clobber' is depreciated in astropy 2.x, it's overwrite now
+        combined_cal.write(outname, overwrite=clobber)
+    except OSError:
+        print("%s already exists!" % (outname))
