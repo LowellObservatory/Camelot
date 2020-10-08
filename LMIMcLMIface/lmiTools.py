@@ -21,11 +21,9 @@ Collection of things needed for quick and one-off analysis tasks, such as:
 (Built with ccdproc v2.0.1, so later versions might break stuff)
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import astropy.units as u
 from astropy.stats import mad_std
@@ -257,7 +255,6 @@ if __name__ == "__main__":
                      lmikw.ampid, lmikw.filtv, lmikw.objname,
                      lmikw.ra, lmikw.dec,
                      lmikw.mirrorcover, lmikw.instcover]
-
 
     rawData = Path(rawDataPath)
     calData = Path(calDataPath)

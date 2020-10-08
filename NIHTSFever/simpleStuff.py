@@ -47,7 +47,7 @@ def medStack(frameList, expNorm=False):
     return combined
 
 
-def quickSubber(callist, arclist, outpath, prefix):
+def quickSubber(callist, arclist, outPath, prefix):
     """
     """
     print("CalList:")
@@ -75,7 +75,7 @@ def quickSubber(callist, arclist, outpath, prefix):
         print(str(e))
 
 
-def singleSub(f1, f2, outpath, prefix, expNorm=False):
+def singleSub(f1, f2, outPath, prefix, expNorm=False):
     """
     """
     img1 = ccdp.CCDData.read(f1)
@@ -96,16 +96,14 @@ def singleSub(f1, f2, outpath, prefix, expNorm=False):
         print(str(e))
 
 
-
 if __name__ == "__main__":
     inmask = '*.fits'
     outPath = "./outputs/"
     clobber = True
 
-
     on = '/Users/rhamilton/Scratch/nihts/nihts_eng/20200509/20200509.0012.fits'
     off = '/Users/rhamilton/Scratch/nihts/nihts_eng/20200509/20200509.0019.fits'
-    sub = singleSub(on, off, outPath, "20200509", expNorm=True)
+    singleSub(on, off, outPath, "20200509", expNorm=True)
 
     inpath = '/Users/rhamilton/Scratch/nihts/nihts_eng/20180822/'
     searcher = inpath + inmask
