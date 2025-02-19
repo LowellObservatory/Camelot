@@ -98,8 +98,8 @@ if __name__ == "__main__":
                                        utils.classes.baseTarget,
                                        backfill=True)
 
-    inst = "NIHTS"
-    cryodir = "/Users/rhamilton/Scratch/NIHTSCryo/"
+    inst = "LMI"
+    cryodir = "/Users/rhamilton/Scratch/LMICryo/"
 
     database = utils.database.influxobj(host=dbs.host,
                                         port=dbs.port,
@@ -136,10 +136,16 @@ if __name__ == "__main__":
     # metric = "%s_sunpowergen2_DetectorCooler" % (inst.upper())
     # expectedFields = 6
 
-    lfiles = sorted(glob(cryodir + "log_NIHTS2_cooler.*"))
+    # lfiles = sorted(glob(cryodir + "log_NIHTS2_cooler.*"))
+    # print("%d Sunpower logs found!" % (len(lfiles)))
+    # stupidKeys = {"TempK": "ColdTip", "Meanpow": "Cmdpow"}
+    # metric = "%s_sunpowergen2_BenchCooler" % (inst.upper())
+    # expectedFields = 6
+
+    lfiles = sorted(glob(cryodir + "log_LMI_cooler.*"))
     print("%d Sunpower logs found!" % (len(lfiles)))
     stupidKeys = {"TempK": "ColdTip", "Meanpow": "Cmdpow"}
-    metric = "%s_sunpowergen2_BenchCooler" % (inst.upper())
+    metric = "%s_sunpowergen1" % (inst.upper())
     expectedFields = 6
 
     for lfile in lfiles:

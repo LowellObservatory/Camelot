@@ -125,3 +125,10 @@ if __name__ == "__main__":
     arclist = inlist[18:23]
     callist = inlist[23:]
     quickSubber(callist, arclist, outPath, "20201006")
+
+    inpath = '/Users/rhamilton/Scratch/nihts/nihts_eng/20201008/'
+    searcher = inpath + inmask
+    inlist = sorted(glob.glob(searcher))
+    arclist = inlist[5:]
+    callist = inlist[0:5]
+    quickSubber(callist, arclist, outPath, "20201008")
