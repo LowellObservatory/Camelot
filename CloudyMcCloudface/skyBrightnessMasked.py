@@ -50,7 +50,7 @@ def readFITS(fname, hkeys, dataExtension=0):
                                     "%Y-%m-%dT%H:%M:%S.%f")
                 hvals.update({key.lower(): ftime})
             else:
-                hvals.update({key.lower(): np.float(dext.header[key])})
+                hvals.update({key.lower(): float(dext.header[key])})
         except KeyError as err:
             print(str(err))
             hvals.update({key.lower(): None})
@@ -83,6 +83,7 @@ def assessAll(iloc, oloc, mask, hkeys):
     tims = []
 
     flist = sorted(glob(iloc + "/TARGET*.fit.bz2"))
+    # flist = sorted(glob(iloc + "/TARGET*.fit"))
     print("%d files found in %s" % (len(flist), iloc))
     # Only do stuff if we actually found some files
     if flist != [] and len(flist) > 1:
@@ -170,7 +171,7 @@ def assessAll(iloc, oloc, mask, hkeys):
 if __name__ == "__main__":
     # NOTE: FITS file mask is still hardcoded in the assessAll func!
 
-    inloc = '/Users/rhamilton/Scratch/allsky/20200418/'
+    inloc = '/home/rhamilton/Scratch/20250211/'
     outloc = './subbed/'
     mask = './dctallsky_mask_dirty.tiff'
     hkeys = ['exptime', 'date-obs', 'tempamb', 'humidity']
